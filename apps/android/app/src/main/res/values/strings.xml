@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">KDS Status</string>
+    <string name="config_device_id_title">Device ID</string>
+    <string name="config_device_id_description">Assigned dashboard identifier for this KDS tablet.</string>
+    <string name="config_device_secret_title">Device Secret</string>
+    <string name="config_device_secret_description">Secret used to authenticate status reports.</string>
+    <string name="config_api_base_url_title">API Base URL</string>
+    <string name="config_api_base_url_description">Base URL for the KDS Status dashboard API.</string>
+</resources>

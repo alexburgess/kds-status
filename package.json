@@ -1,0 +1,21 @@
+{
+  "name": "kds-status",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/dashboard"
+  ],
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.10"
+    },
+    "postcss": "^8.5.10"
+  },
+  "scripts": {
+    "dev": "npm --workspace @kds-status/dashboard run dev",
+    "build": "npm --workspace @kds-status/dashboard run build",
+    "lint": "npm --workspace @kds-status/dashboard run lint",
+    "typecheck": "npm --workspace @kds-status/dashboard run typecheck",
+    "test": "npm --workspace @kds-status/dashboard run test"
+  }
+}

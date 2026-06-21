@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Android / Gradle
+.gradle/
+build/
+captures/
+local.properties
+*.apk
+*.aab
+*.iml
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
