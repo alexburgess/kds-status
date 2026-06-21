@@ -14,21 +14,22 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
     notes: "Mounted above the expo pass. Staff should confirm the printer test before service.",
     active: true,
     squareKdsPackageName: undefined,
-    squareKdsExpectedVersion: undefined,
+    squareKdsExpectedVersion: "6.0.1",
     printers: [
       {
         id: "printer-hot-line",
         name: "Hot line printer",
         host: "192.168.20.61",
         port: 9100,
+        macAddress: "00:11:32:aa:bb:61",
         description: "Expo station ticket printer"
       }
     ],
     expectedSettings: [
-      { section: "Tickets", setting: "Display mode", expected: "Order view" },
-      { section: "Tickets", setting: "Fulfillment", expected: "Expo controls entire order" },
-      { section: "Notifications", setting: "Sound", expected: "Enabled" },
-      { section: "Hardware", setting: "Printer", expected: "Hot line printer" }
+      { section: "Kitchen Routing", setting: "Routing mode", expected: "Expo controls entire order" },
+      { section: "Kitchen Routing", setting: "Station filter", expected: "All items" },
+      { section: "Sources", setting: "Accepted sources", expected: "POS, Online, Delivery" },
+      { section: "Sources", setting: "Order visibility", expected: "All open tickets" }
     ]
   },
   {
@@ -44,8 +45,8 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
     squareKdsExpectedVersion: undefined,
     printers: [],
     expectedSettings: [
-      { section: "Tickets", setting: "Station filter", expected: "Grill only" },
-      { section: "Tickets", setting: "Sort", expected: "Oldest first" },
+      { section: "Kitchen Routing", setting: "Station filter", expected: "Grill only" },
+      { section: "Sources", setting: "Accepted sources", expected: "POS and online" },
       { section: "Hardware", setting: "Printer", expected: "None" }
     ]
   }
@@ -57,6 +58,7 @@ export const demoStatusReports: StatusReport[] = [
     deviceId: "expo-line-01",
     reportedAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
     localIp: "192.168.20.44",
+    localMacAddress: "02:00:00:12:34:44",
     activeTransport: "ethernet",
     internet: { ok: true, latencyMs: 41 },
     printerChecks: [
@@ -65,12 +67,15 @@ export const demoStatusReports: StatusReport[] = [
         name: "Hot line printer",
         host: "192.168.20.61",
         port: 9100,
+        macAddress: "00:11:32:aa:bb:61",
         ok: true,
         latencyMs: 8
       }
     ],
     squareKds: {
-      versionStatus: "not_configured"
+      installedVersion: "6.0.1",
+      expectedVersion: "6.0.1",
+      versionStatus: "match"
     },
     appVersion: "0.1.0-demo",
     diagnostics: []
@@ -80,6 +85,7 @@ export const demoStatusReports: StatusReport[] = [
     deviceId: "grill-01",
     reportedAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
     localIp: "192.168.20.47",
+    localMacAddress: "02:00:00:12:34:47",
     activeTransport: "wifi",
     internet: { ok: true, latencyMs: 58 },
     printerChecks: [],

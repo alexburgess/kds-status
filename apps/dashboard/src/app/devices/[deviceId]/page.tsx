@@ -46,6 +46,10 @@ export default async function DeviceDetailPage({
               <dd>{detail.latestReport?.localIp ?? "Unknown"}</dd>
             </div>
             <div>
+              <dt>MAC Address</dt>
+              <dd>{detail.latestReport?.localMacAddress ?? "Unavailable"}</dd>
+            </div>
+            <div>
               <dt>Network</dt>
               <dd>{detail.latestReport?.activeTransport ?? "Unknown"}</dd>
             </div>
@@ -77,6 +81,7 @@ export default async function DeviceDetailPage({
             <tr>
               <th>Reported</th>
               <th>IP</th>
+              <th>MAC</th>
               <th>Network</th>
               <th>Internet</th>
               <th>Printers</th>
@@ -88,6 +93,7 @@ export default async function DeviceDetailPage({
               <tr key={report.id}>
                 <td>{formatRelativeTime(report.reportedAt)}</td>
                 <td>{report.localIp ?? "Unknown"}</td>
+                <td>{report.localMacAddress ?? "Unavailable"}</td>
                 <td>{report.activeTransport}</td>
                 <td>{report.internet.ok ? "Reachable" : report.internet.error ?? "Failed"}</td>
                 <td>

@@ -14,6 +14,7 @@ export const PrinterCheckSchema = z.object({
   name: z.string().min(1),
   host: z.string().min(1),
   port: z.number().int().min(1).max(65535),
+  macAddress: z.string().optional(),
   ok: z.boolean(),
   latencyMs: z.number().int().nonnegative().optional(),
   error: z.string().optional()
@@ -22,6 +23,7 @@ export const PrinterCheckSchema = z.object({
 export const DeviceStatusPayloadSchema = z.object({
   reportedAt: z.string().datetime().optional(),
   localIp: z.string().optional(),
+  localMacAddress: z.string().optional(),
   activeTransport: ActiveTransportSchema,
   internet: z.object({
     ok: z.boolean(),

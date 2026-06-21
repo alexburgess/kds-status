@@ -477,6 +477,10 @@ svg {
   grid-template-columns: 1fr 1fr;
 }
 
+.definition-row.printer-target-row {
+  grid-template-columns: 1fr 1fr 96px 1fr;
+}
+
 .primary-button {
   align-items: center;
   background: var(--accent);
@@ -827,6 +831,7 @@ svg {
 
   .definition-row,
   .definition-row.two-col,
+  .definition-row.printer-target-row,
   .checklist-row {
     grid-template-columns: 1fr;
   }

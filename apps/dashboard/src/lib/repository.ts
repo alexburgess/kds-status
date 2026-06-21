@@ -33,6 +33,7 @@ interface PrinterRow {
   name: string;
   host: string;
   port: number;
+  mac_address: string | null;
   description: string | null;
 }
 
@@ -42,6 +43,7 @@ interface StatusReportRow {
   device_id?: string;
   reported_at: string;
   local_ip: string | null;
+  local_mac: string | null;
   active_transport: StatusReport["activeTransport"];
   internet_ok: boolean;
   internet_latency_ms: number | null;
@@ -213,6 +215,7 @@ export async function saveStatusReport(device: DeviceDefinition, payload: Device
     device_id: device.id,
     reported_at: report.reportedAt,
     local_ip: report.localIp ?? null,
+    local_mac: report.localMacAddress ?? null,
     active_transport: report.activeTransport,
     internet_ok: report.internet.ok,
     internet_latency_ms: report.internet.latencyMs ?? null,
@@ -255,6 +258,7 @@ function normalizeStatusReport(deviceId: string, payload: DeviceStatusPayload): 
     deviceId,
     reportedAt: payload.reportedAt ?? new Date().toISOString(),
     localIp: payload.localIp,
+    localMacAddress: payload.localMacAddress,
     activeTransport: payload.activeTransport,
     internet: payload.internet,
     printerChecks: payload.printerChecks,
@@ -286,6 +290,7 @@ function mapPrinterRow(row: PrinterRow): PrinterDefinition {
     name: row.name,
     host: row.host,
     port: row.port,
+    macAddress: row.mac_address ?? undefined,
     description: row.description ?? undefined
   };
 }
@@ -296,6 +301,7 @@ function mapStatusReportRow(row: StatusReportRow): StatusReport {
     deviceId: row.device_device_id ?? row.device_id ?? "unknown",
     reportedAt: row.reported_at,
     localIp: row.local_ip ?? undefined,
+    localMacAddress: row.local_mac ?? undefined,
     activeTransport: row.active_transport,
     internet: {
       ok: row.internet_ok,

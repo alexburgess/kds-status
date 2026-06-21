@@ -21,13 +21,15 @@ interface DefinitionDraft {
   printerName: string;
   printerHost: string;
   printerPort: string;
+  printerMacAddress: string;
   expectedSettingsJson: string;
 }
 
 const defaultSettings = [
-  { section: "Tickets", setting: "Display mode", expected: "Order view" },
-  { section: "Tickets", setting: "Station filter", expected: "All items" },
-  { section: "Hardware", setting: "Printer", expected: "None" }
+  { section: "Kitchen Routing", setting: "Routing mode", expected: "Expo controls entire order" },
+  { section: "Kitchen Routing", setting: "Station filter", expected: "All items" },
+  { section: "Sources", setting: "Accepted sources", expected: "POS, Online, Delivery" },
+  { section: "Sources", setting: "Order visibility", expected: "All open tickets" }
 ];
 
 export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
@@ -147,16 +149,16 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
               />
             </label>
             <label>
-              Expected Square KDS version
+              Available Square KDS version
               <input
-                placeholder="Optional"
+                placeholder="Latest version you expect from Play Store"
                 value={draft.squareKdsExpectedVersion}
                 onChange={(event) => update("squareKdsExpectedVersion", event.target.value)}
               />
             </label>
             <div className="form-subsection">
               <span>Printer target</span>
-              <div className="definition-row">
+              <div className="definition-row printer-target-row">
                 <input
                   aria-label="Printer name"
                   placeholder="Printer name"
@@ -169,13 +171,19 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
                   value={draft.printerHost}
                   onChange={(event) => update("printerHost", event.target.value)}
                 />
-                <input
-                  aria-label="Printer port"
-                  value={draft.printerPort}
-                  onChange={(event) => update("printerPort", event.target.value)}
-                />
-              </div>
+              <input
+                aria-label="Printer port"
+                value={draft.printerPort}
+                onChange={(event) => update("printerPort", event.target.value)}
+              />
+              <input
+                aria-label="Printer MAC"
+                placeholder="00:11:32:aa:bb:61"
+                value={draft.printerMacAddress}
+                onChange={(event) => update("printerMacAddress", event.target.value)}
+              />
             </div>
+          </div>
             <label>
               Expected settings JSON
               <textarea
@@ -225,10 +233,11 @@ function createDefaultDraft(): DefinitionDraft {
     role: "Station screen",
     notes: "Confirm expected Square KDS settings before service.",
     squareKdsPackageName: "",
-    squareKdsExpectedVersion: "",
+    squareKdsExpectedVersion: "6.0.1",
     printerName: "",
     printerHost: "",
     printerPort: "9100",
+    printerMacAddress: "",
     expectedSettingsJson: JSON.stringify(defaultSettings, null, 2)
   };
 }
@@ -248,8 +257,8 @@ function buildDefinitionSql(draft: DefinitionDraft) {
   const expectedSettings = normalizeJson(draft.expectedSettingsJson);
   const printerSql = draft.printerName.trim() && draft.printerHost.trim()
     ? `
-insert into public.printers (device_id, name, host, port, description)
-select id, ${sqlString(draft.printerName)}, ${sqlString(draft.printerHost)}, ${printerPort}, null
+insert into public.printers (device_id, name, host, port, mac_address, description)
+select id, ${sqlString(draft.printerName)}, ${sqlString(draft.printerHost)}, ${printerPort}, ${sqlNullable(draft.printerMacAddress)}, null
 from public.devices
 where device_id = ${sqlString(draft.deviceId)};`
     : "";

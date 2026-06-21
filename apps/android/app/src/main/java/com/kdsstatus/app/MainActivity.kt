@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -143,8 +145,8 @@ private fun StatusContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(22.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("KDS Status", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
 
@@ -203,10 +205,25 @@ private fun ErrorCard(message: String, onRefresh: () -> Unit) {
 @Composable
 private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
     HeaderCard(state.remoteConfig, state.report, state.postError)
-    NetworkCard(state.report)
-    PrinterCard(state.report)
-    SquareKdsCard(state.report)
-    ExpectedSetupCard(state.remoteConfig)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        ThisDevicePanel(
+            report = state.report,
+            modifier = Modifier.weight(1f)
+        )
+        ConnectedDevicesPanel(
+            report = state.report,
+            modifier = Modifier.weight(1f)
+        )
+        SquareKdsConfigurationPanel(
+            config = state.remoteConfig,
+            report = state.report,
+            modifier = Modifier.weight(1f)
+        )
+    }
 
     Button(
         onClick = onRefresh,
@@ -220,28 +237,39 @@ private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
 @Composable
 private fun HeaderCard(config: DeviceConfigResponse, report: StatusReportPayload, postError: String?) {
     StatusCard {
-        Text(config.displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text("${config.locationName} · ${config.role}", color = Color(0xFF5F6F7E))
-        Spacer(Modifier.height(12.dp))
-        StatusRow("Report", if (postError == null) "Uploaded" else "Upload failed: $postError")
-        StatusRow("App version", report.appVersion)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(config.displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("${config.locationName} · ${config.role}", color = Color(0xFF5F6F7E))
+            }
+            StatusRow(
+                label = "Report",
+                value = if (postError == null) "Uploaded" else "Upload failed: $postError",
+                modifier = Modifier.weight(1.6f)
+            )
+            StatusRow("App version", report.appVersion, modifier = Modifier.weight(0.9f))
+        }
         if (config.notes.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
             Text(config.notes, color = Color(0xFF263847))
         }
     }
 }
 
 @Composable
-private fun NetworkCard(report: StatusReportPayload) {
-    StatusCard {
-        SectionTitle("Network")
-        StatusRow("Local IP", report.localIp ?: "Unknown")
+private fun ThisDevicePanel(report: StatusReportPayload, modifier: Modifier = Modifier) {
+    StatusCard(modifier = modifier) {
+        PanelTitle("THIS DEVICE")
+        StatusRow("MAC Address", report.localMacAddress ?: "Unavailable")
+        StatusRow("IP Address", report.localIp ?: "Unknown")
         StatusRow("Connection", StatusFormatter.transportLabel(report.activeTransport))
-        StatusRow(
-            label = "Internet",
-            value = if (report.internet.ok) "Reachable (${report.internet.latencyMs ?: 0} ms)"
-            else report.internet.error ?: "Failed"
+        StatusDotRow(
+            label = "Can connect to internet",
+            value = if (report.internet.ok) "Yes (${report.internet.latencyMs ?: 0} ms)" else report.internet.error ?: "No",
+            ok = report.internet.ok
         )
         report.diagnostics.forEach { diagnostic ->
             Text(diagnostic, color = Color(0xFF9A620B), fontSize = 13.sp)
@@ -250,33 +278,60 @@ private fun NetworkCard(report: StatusReportPayload) {
 }
 
 @Composable
-private fun PrinterCard(report: StatusReportPayload) {
-    StatusCard {
-        SectionTitle("Printers")
+private fun ConnectedDevicesPanel(report: StatusReportPayload, modifier: Modifier = Modifier) {
+    StatusCard(modifier = modifier) {
+        PanelTitle("CONNECTED DEVICES")
         if (report.printerChecks.isEmpty()) {
-            Text("No printer expected for this screen.", color = Color(0xFF5F6F7E))
+            Text("No printer expected for this KDS screen.", color = Color(0xFF5F6F7E), fontSize = 14.sp)
         } else {
             report.printerChecks.forEach { printer ->
-                StatusRow(
-                    label = printer.name,
-                    value = if (printer.ok) "${printer.host}:${printer.port} reachable"
-                    else "${printer.host}:${printer.port} ${printer.error ?: "failed"}"
+                Text(printer.name, color = Color(0xFF14202B), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                StatusRow("Printer MAC Address", printer.macAddress ?: "Unavailable")
+                StatusRow("Printer IP Address", "${printer.host}:${printer.port}")
+                StatusDotRow(
+                    label = "Can this KDS reach it",
+                    value = if (printer.ok) "Yes (${printer.latencyMs ?: 0} ms)" else printer.error ?: "No",
+                    ok = printer.ok
                 )
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun SquareKdsCard(report: StatusReportPayload) {
-    StatusCard {
-        SectionTitle("Square KDS")
+private fun SquareKdsConfigurationPanel(
+    config: DeviceConfigResponse,
+    report: StatusReportPayload,
+    modifier: Modifier = Modifier
+) {
+    StatusCard(modifier = modifier) {
+        PanelTitle("SQUARE KDS CONFIGURATION")
+        SettingGroup("Kitchen Routing", config.expectedSettings.filterForSection("Kitchen Routing", "routing"))
+        SettingGroup("Sources", config.expectedSettings.filterForSection("Sources", "source"))
+        val versionOk = when (report.squareKds.versionStatus) {
+            "match" -> true
+            "mismatch", "not_installed" -> false
+            else -> null
+        }
         StatusRow(
-            label = "Version",
+            label = "Installed version",
             value = StatusFormatter.squareKdsLabel(
                 report.squareKds.versionStatus,
                 report.squareKds.installedVersion
             )
+        )
+        StatusRow("Available version", report.squareKds.expectedVersion ?: "Not configured")
+        StatusDotRow(
+            label = "Version current",
+            value = when (report.squareKds.versionStatus) {
+                "match" -> "Yes"
+                "mismatch" -> "No"
+                "not_installed" -> "Square KDS not visible"
+                "not_configured" -> "Package not configured"
+                else -> "Unknown"
+            },
+            ok = versionOk
         )
         report.squareKds.error?.let { error ->
             Text(error, color = Color(0xFF9A620B), fontSize = 13.sp)
@@ -285,44 +340,50 @@ private fun SquareKdsCard(report: StatusReportPayload) {
 }
 
 @Composable
-private fun ExpectedSetupCard(config: DeviceConfigResponse) {
-    StatusCard {
-        SectionTitle("Expected Setup")
-        config.expectedSettings.forEach { item ->
-            StatusRow(label = "${item.section}: ${item.setting}", value = item.expected)
+private fun SettingGroup(title: String, settings: List<ExpectedSetting>) {
+    Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
+    if (settings.isEmpty()) {
+        Text("Not configured", color = Color(0xFF5F6F7E), fontSize = 13.sp)
+    } else {
+        settings.forEach { item ->
+            StatusRow(label = item.setting, value = item.expected)
         }
     }
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
-private fun StatusCard(content: @Composable ColumnScope.() -> Unit) {
+private fun StatusCard(
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
             content = content
         )
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
-    Spacer(Modifier.height(4.dp))
+private fun PanelTitle(text: String) {
+    Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
+    Spacer(Modifier.height(6.dp))
 }
 
 @Composable
-private fun StatusRow(label: String, value: String) {
+private fun StatusRow(label: String, value: String, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(Color(0xFFF7FAFC), RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 9.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -338,6 +399,44 @@ private fun StatusRow(label: String, value: String) {
     }
 }
 
+@Composable
+private fun StatusDotRow(label: String, value: String, ok: Boolean?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF7FAFC), RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StatusDot(ok)
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = Color(0xFF5F6F7E), fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Text(
+            value,
+            color = Color(0xFF14202B),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1.2f),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+private fun StatusDot(ok: Boolean?) {
+    val color = when (ok) {
+        true -> Color(0xFF138A5E)
+        false -> Color(0xFFB42318)
+        null -> Color(0xFF9A620B)
+    }
+
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .background(color, RoundedCornerShape(999.dp))
+    )
+}
+
 private fun previewDeviceConfig() = DeviceConfigResponse(
     deviceId = "preview-kds",
     displayName = "Expo Line 01",
@@ -349,23 +448,25 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
         expectedVersion = "6.0.1"
     ),
     expectedSettings = listOf(
-        ExpectedSetting("Tickets", "Display mode", "Order view"),
-        ExpectedSetting("Tickets", "Fulfillment", "Expo controls entire order"),
-        ExpectedSetting("Notifications", "Sound", "Enabled"),
-        ExpectedSetting("Hardware", "Printer", "Hot line printer")
+        ExpectedSetting("Kitchen Routing", "Routing mode", "Expo controls entire order"),
+        ExpectedSetting("Kitchen Routing", "Station filter", "All items"),
+        ExpectedSetting("Sources", "Accepted sources", "POS, Online, Delivery"),
+        ExpectedSetting("Sources", "Order visibility", "All open tickets")
     ),
     printers = listOf(
         PrinterTarget(
             id = "preview-printer",
             name = "Hot line printer",
             host = "192.168.20.61",
-            port = 9100
+            port = 9100,
+            macAddress = "00:11:32:aa:bb:61"
         )
     )
 )
 
 private fun previewStatusReport() = StatusReportPayload(
     localIp = "192.168.20.44",
+    localMacAddress = "02:00:00:12:34:44",
     activeTransport = "ethernet",
     internet = InternetCheckPayload(ok = true, latencyMs = 41),
     printerChecks = listOf(
@@ -374,6 +475,7 @@ private fun previewStatusReport() = StatusReportPayload(
             name = "Hot line printer",
             host = "192.168.20.61",
             port = 9100,
+            macAddress = "00:11:32:aa:bb:61",
             ok = true,
             latencyMs = 8
         )
@@ -387,6 +489,13 @@ private fun previewStatusReport() = StatusReportPayload(
     appVersion = BuildConfig.VERSION_NAME,
     diagnostics = listOf("Preview mode is using sample data.")
 )
+
+private fun List<ExpectedSetting>.filterForSection(section: String, keyword: String): List<ExpectedSetting> =
+    filter { setting ->
+        setting.section.equals(section, ignoreCase = true) ||
+            setting.section.contains(keyword, ignoreCase = true) ||
+            setting.setting.contains(keyword, ignoreCase = true)
+    }
 
 private sealed interface ScreenState {
     data object Loading : ScreenState

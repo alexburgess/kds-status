@@ -33,12 +33,14 @@ data class PrinterTarget(
     val name: String,
     val host: String,
     val port: Int = 9100,
+    val macAddress: String? = null,
     val description: String? = null
 )
 
 @Serializable
 data class StatusReportPayload(
     val localIp: String? = null,
+    val localMacAddress: String? = null,
     val activeTransport: String,
     val internet: InternetCheckPayload,
     val printerChecks: List<PrinterCheckPayload>,
@@ -60,6 +62,7 @@ data class PrinterCheckPayload(
     val name: String,
     val host: String,
     val port: Int,
+    val macAddress: String? = null,
     val ok: Boolean,
     val latencyMs: Int? = null,
     val error: String? = null

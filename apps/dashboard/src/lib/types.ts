@@ -13,6 +13,7 @@ export interface PrinterDefinition {
   name: string;
   host: string;
   port: number;
+  macAddress?: string;
   description?: string;
 }
 
@@ -41,6 +42,7 @@ export interface PrinterCheck {
   name: string;
   host: string;
   port: number;
+  macAddress?: string;
   ok: boolean;
   latencyMs?: number;
   error?: string;
@@ -59,6 +61,7 @@ export interface StatusReport {
   deviceId: string;
   reportedAt: string;
   localIp?: string;
+  localMacAddress?: string;
   activeTransport: ActiveTransport;
   internet: InternetCheck;
   printerChecks: PrinterCheck[];

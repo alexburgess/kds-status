@@ -70,12 +70,14 @@ Use this when you want the tablet to load its actual definition and report diagn
 Expected result:
 
 - The app no longer shows setup required.
-- It shows the assigned device name and expected setup checklist.
-- It shows the tablet's actual local IP address.
-- It shows Wi-Fi/Ethernet status.
+- It shows three tablet panels: **THIS DEVICE**, **CONNECTED DEVICES**, and **SQUARE KDS CONFIGURATION**.
+- It shows the tablet's local IP address and MAC address when Android exposes it.
+- It shows green or red dots for internet, printer reachability, and Square KDS version status.
 - It tests internet reachability.
 - It tests configured printer host/port reachability.
 - It reports status back to the dashboard.
+
+Square KDS version comparison uses the `square_kds_expected_version` value from the device definition as the available/latest version. Android does not provide a reliable public API for arbitrary apps to read the live Play Store latest version directly from the tablet.
 
 ## Local HTTP Note
 

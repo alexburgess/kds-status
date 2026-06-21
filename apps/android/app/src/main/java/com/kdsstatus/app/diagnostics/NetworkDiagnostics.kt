@@ -11,9 +11,12 @@ import com.kdsstatus.app.data.PrinterCheckPayload
 import com.kdsstatus.app.data.PrinterTarget
 import com.kdsstatus.app.data.SquareKdsCheckPayload
 import com.kdsstatus.app.data.StatusReportPayload
+import java.io.File
 import java.net.Inet4Address
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -30,6 +33,7 @@ class NetworkDiagnostics(private val context: Context) {
 
         StatusReportPayload(
             localIp = networkState.localIp,
+            localMacAddress = networkState.localMacAddress,
             activeTransport = networkState.transport,
             internet = internet.await(),
             printerChecks = printers.awaitAll(),
@@ -43,17 +47,20 @@ class NetworkDiagnostics(private val context: Context) {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork = manager.activeNetwork ?: return NetworkState(
             localIp = null,
+            localMacAddress = null,
             transport = "offline",
             diagnostics = listOf("No active network")
         )
 
         val capabilities = manager.getNetworkCapabilities(activeNetwork)
         val linkProperties = manager.getLinkProperties(activeNetwork)
+        val interfaceName = linkProperties?.interfaceName
         val localIp = linkProperties
             ?.linkAddresses
             ?.map { it.address }
             ?.firstOrNull { address -> !address.isLoopbackAddress && address is Inet4Address }
             ?.hostAddress
+        val localMacAddress = interfaceName?.let(::readInterfaceMacAddress)
 
         val transport = when {
             capabilities == null -> "unknown"
@@ -66,10 +73,16 @@ class NetworkDiagnostics(private val context: Context) {
 
         val diagnostics = buildList {
             if (localIp == null) add("No IPv4 address found on active network")
+            if (localMacAddress == null) add("MAC address is unavailable on this Android build or network interface")
             if (capabilities == null) add("No network capabilities available")
         }
 
-        return NetworkState(localIp = localIp, transport = transport, diagnostics = diagnostics)
+        return NetworkState(
+            localIp = localIp,
+            localMacAddress = localMacAddress,
+            transport = transport,
+            diagnostics = diagnostics
+        )
     }
 
     private suspend fun checkInternet(): InternetCheckPayload = withContext(Dispatchers.IO) {
@@ -80,12 +93,14 @@ class NetworkDiagnostics(private val context: Context) {
     private suspend fun checkPrinter(printer: PrinterTarget): PrinterCheckPayload = withContext(Dispatchers.IO) {
         val port = if (printer.port in 1..65535) printer.port else 9100
         val result = checkSocket(printer.host, port, timeoutMs = 2500)
+        val macAddress = printer.macAddress ?: readArpMacAddress(printer.host)
 
         PrinterCheckPayload(
             printerId = printer.id,
             name = printer.name,
             host = printer.host,
             port = port,
+            macAddress = macAddress,
             ok = result.ok,
             latencyMs = result.latencyMs,
             error = result.error
@@ -152,10 +167,35 @@ class NetworkDiagnostics(private val context: Context) {
 
     private fun elapsedMs(startNanos: Long): Int =
         ((System.nanoTime() - startNanos) / 1_000_000.0).roundToInt()
+
+    private fun readInterfaceMacAddress(interfaceName: String): String? =
+        runCatching {
+            NetworkInterface.getByName(interfaceName)
+                ?.hardwareAddress
+                ?.takeIf { bytes -> bytes.isNotEmpty() }
+                ?.joinToString(":") { byte -> "%02x".format(byte) }
+                ?.takeUnless { mac -> mac == "02:00:00:00:00:00" }
+        }.getOrNull()
+
+    private fun readArpMacAddress(host: String): String? =
+        runCatching {
+            File("/proc/net/arp")
+                .takeIf { it.canRead() }
+                ?.readLines()
+                ?.asSequence()
+                ?.drop(1)
+                ?.map { line -> line.trim().split(Regex("\\s+")) }
+                ?.firstOrNull { fields -> fields.size >= 4 && fields[0] == host }
+                ?.get(3)
+                ?.lowercase(Locale.US)
+                ?.takeIf { mac -> mac.matches(Regex("([0-9a-f]{2}:){5}[0-9a-f]{2}")) }
+                ?.takeUnless { mac -> mac == "00:00:00:00:00:00" }
+        }.getOrNull()
 }
 
 private data class NetworkState(
     val localIp: String?,
+    val localMacAddress: String?,
     val transport: String,
     val diagnostics: List<String>
 )
