@@ -24,8 +24,8 @@ values
     'Expo Line 01',
     'Expo screen',
     'Mounted above the expo pass. Staff should confirm the printer test before service.',
+    'com.squareup.rst.kds',
     null,
-    '6.0.1',
     '[
       {"section":"Kitchen Routing","setting":"Routing mode","expected":"Expo controls entire order"},
       {"section":"Kitchen Routing","setting":"Station filter","expected":"All items"},
@@ -79,7 +79,7 @@ select
   true,
   41,
   '[{"printerId":"printer-hot-line","name":"Hot line printer","host":"192.168.20.61","port":9100,"macAddress":"00:11:32:aa:bb:61","ok":true,"latencyMs":8}]'::jsonb,
-  '{"installedVersion":"6.0.1","expectedVersion":"6.0.1","versionStatus":"match"}'::jsonb,
+  '{"packageName":"com.squareup.rst.kds","installedVersion":"7.12","availableVersion":"7.12","expectedVersion":"7.12","versionStatus":"match"}'::jsonb,
   '0.1.0-demo',
   '{}'
 from public.devices

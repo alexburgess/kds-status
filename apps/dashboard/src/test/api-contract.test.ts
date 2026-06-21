@@ -21,9 +21,10 @@ describe("device status payload schema", () => {
         }
       ],
       squareKds: {
-        packageName: "com.squareup.kds",
-        installedVersion: "6.0.1",
-        expectedVersion: "6.0.1",
+        packageName: "com.squareup.rst.kds",
+        installedVersion: "7.12",
+        availableVersion: "7.12",
+        expectedVersion: "7.12",
         versionStatus: "match"
       },
       appVersion: "0.1.0",

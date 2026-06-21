@@ -17,7 +17,12 @@ data class DeviceConfigResponse(
 @Serializable
 data class SquareKdsDefinition(
     val packageName: String? = null,
-    val expectedVersion: String? = null
+    val availableVersion: String? = null,
+    val expectedVersion: String? = null,
+    val versionSource: String? = null,
+    val versionLookupError: String? = null,
+    val versionCheckedAt: String? = null,
+    val playStoreUpdatedAt: String? = null
 )
 
 @Serializable
@@ -72,6 +77,7 @@ data class PrinterCheckPayload(
 data class SquareKdsCheckPayload(
     val packageName: String? = null,
     val installedVersion: String? = null,
+    val availableVersion: String? = null,
     val expectedVersion: String? = null,
     val versionStatus: String,
     val error: String? = null

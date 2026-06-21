@@ -32,7 +32,7 @@ For production, use long random secrets and rotate them if a tablet is retired o
 The easiest path is the dashboard builder:
 
 1. Run the dashboard and open `/definitions`.
-2. Fill in the location, display name, assigned `deviceId`, role, expected settings, and printer target.
+2. Fill in the location, display name, assigned `deviceId`, role, Square KDS package name, expected settings, and printer target.
 3. Copy the generated Supabase SQL and run it in the Supabase SQL editor.
 4. Copy the generated Miradore managed configuration values into that tablet's app configuration.
 
@@ -48,6 +48,8 @@ If you are editing manually, the minimum required database fields are:
 - `devices.expected_settings`
 
 Add rows to `printers` only when that KDS screen should test a printer.
+
+The Square KDS version is not typed into the definition. When a tablet fetches `/api/device/config`, the dashboard looks up the configured `square_kds_package_name` on Google Play and sends the retrieved version to the tablet as the available version. The current Square KDS package name is `com.squareup.rst.kds`.
 
 ## Local API Smoke Test
 

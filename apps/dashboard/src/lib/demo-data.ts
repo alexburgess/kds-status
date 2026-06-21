@@ -13,8 +13,8 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
     role: "Expo screen",
     notes: "Mounted above the expo pass. Staff should confirm the printer test before service.",
     active: true,
-    squareKdsPackageName: undefined,
-    squareKdsExpectedVersion: "6.0.1",
+    squareKdsPackageName: "com.squareup.rst.kds",
+    squareKdsExpectedVersion: undefined,
     printers: [
       {
         id: "printer-hot-line",
@@ -73,8 +73,10 @@ export const demoStatusReports: StatusReport[] = [
       }
     ],
     squareKds: {
-      installedVersion: "6.0.1",
-      expectedVersion: "6.0.1",
+      packageName: "com.squareup.rst.kds",
+      installedVersion: "7.12",
+      availableVersion: "7.12",
+      expectedVersion: "7.12",
       versionStatus: "match"
     },
     appVersion: "0.1.0-demo",

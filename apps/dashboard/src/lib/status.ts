@@ -43,15 +43,23 @@ export function summarizeDeviceStatus(device: DeviceDefinition, report?: StatusR
   }
 
   if (report.squareKds.versionStatus === "mismatch") {
+    const targetVersion =
+      report.squareKds.availableVersion ??
+      report.squareKds.expectedVersion ??
+      device.squareKdsExpectedVersion ??
+      "available Play Store version";
+
     checks.push(
-      `Square KDS version mismatch: ${report.squareKds.installedVersion ?? "unknown"} expected ${
-        report.squareKds.expectedVersion ?? device.squareKdsExpectedVersion ?? "configured version"
-      }`
+      `Square KDS version mismatch: ${report.squareKds.installedVersion ?? "unknown"} available ${targetVersion}`
     );
   }
 
   if (report.squareKds.versionStatus === "not_installed") {
     checks.push("Square KDS app is not installed or not visible");
+  }
+
+  if (report.squareKds.versionStatus === "unknown" && report.squareKds.packageName) {
+    checks.push(report.squareKds.error ?? "Square KDS Play Store version could not be checked");
   }
 
   if (checks.length === 0) {

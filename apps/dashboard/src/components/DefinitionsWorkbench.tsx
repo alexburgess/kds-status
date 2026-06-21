@@ -17,7 +17,6 @@ interface DefinitionDraft {
   role: string;
   notes: string;
   squareKdsPackageName: string;
-  squareKdsExpectedVersion: string;
   printerName: string;
   printerHost: string;
   printerPort: string;
@@ -143,19 +142,12 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
             <label>
               Square KDS package name
               <input
-                placeholder="Leave blank until confirmed from Miradore"
+                placeholder="com.squareup.rst.kds"
                 value={draft.squareKdsPackageName}
                 onChange={(event) => update("squareKdsPackageName", event.target.value)}
               />
             </label>
-            <label>
-              Available Square KDS version
-              <input
-                placeholder="Latest version you expect from Play Store"
-                value={draft.squareKdsExpectedVersion}
-                onChange={(event) => update("squareKdsExpectedVersion", event.target.value)}
-              />
-            </label>
+            <p className="form-note">The available version is retrieved automatically from Google Play.</p>
             <div className="form-subsection">
               <span>Printer target</span>
               <div className="definition-row printer-target-row">
@@ -232,8 +224,7 @@ function createDefaultDraft(): DefinitionDraft {
     displayName: "Prep Line 01",
     role: "Station screen",
     notes: "Confirm expected Square KDS settings before service.",
-    squareKdsPackageName: "",
-    squareKdsExpectedVersion: "6.0.1",
+    squareKdsPackageName: "com.squareup.rst.kds",
     printerName: "",
     printerHost: "",
     printerPort: "9100",
@@ -288,7 +279,7 @@ select
   ${sqlString(draft.role)},
   ${sqlString(draft.notes)},
   ${sqlNullable(draft.squareKdsPackageName)},
-  ${sqlNullable(draft.squareKdsExpectedVersion)},
+  null,
   ${sqlString(expectedSettings)}::jsonb
 from public.locations
 where slug = ${locationSlug}

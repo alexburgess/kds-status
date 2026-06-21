@@ -321,7 +321,10 @@ private fun SquareKdsConfigurationPanel(
                 report.squareKds.installedVersion
             )
         )
-        StatusRow("Available version", report.squareKds.expectedVersion ?: "Not configured")
+        StatusRow(
+            "Available version",
+            report.squareKds.availableVersion ?: report.squareKds.expectedVersion ?: "Unable to retrieve"
+        )
         StatusDotRow(
             label = "Version current",
             value = when (report.squareKds.versionStatus) {
@@ -329,7 +332,7 @@ private fun SquareKdsConfigurationPanel(
                 "mismatch" -> "No"
                 "not_installed" -> "Square KDS not visible"
                 "not_configured" -> "Package not configured"
-                else -> "Unknown"
+                else -> "Play Store lookup unavailable"
             },
             ok = versionOk
         )
@@ -444,8 +447,10 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
     role = "Expo screen",
     notes = "Preview data. Real tablets load this from the dashboard using their assigned deviceId.",
     squareKds = SquareKdsDefinition(
-        packageName = "com.squareup.kds",
-        expectedVersion = "6.0.1"
+        packageName = "com.squareup.rst.kds",
+        availableVersion = "7.12",
+        expectedVersion = "7.12",
+        versionSource = "play-store"
     ),
     expectedSettings = listOf(
         ExpectedSetting("Kitchen Routing", "Routing mode", "Expo controls entire order"),
@@ -481,9 +486,10 @@ private fun previewStatusReport() = StatusReportPayload(
         )
     ),
     squareKds = SquareKdsCheckPayload(
-        packageName = "com.squareup.kds",
-        installedVersion = "6.0.1",
-        expectedVersion = "6.0.1",
+        packageName = "com.squareup.rst.kds",
+        installedVersion = "7.12",
+        availableVersion = "7.12",
+        expectedVersion = "7.12",
         versionStatus = "match"
     ),
     appVersion = BuildConfig.VERSION_NAME,

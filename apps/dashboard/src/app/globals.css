@@ -666,6 +666,12 @@ svg {
   gap: 6px;
 }
 
+.builder-form .form-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: -4px 0 0;
+}
+
 .builder-form input,
 .builder-form textarea {
   background: #fff;

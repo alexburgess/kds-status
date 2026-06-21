@@ -77,7 +77,7 @@ Expected result:
 - It tests configured printer host/port reachability.
 - It reports status back to the dashboard.
 
-Square KDS version comparison uses the `square_kds_expected_version` value from the device definition as the available/latest version. Android does not provide a reliable public API for arbitrary apps to read the live Play Store latest version directly from the tablet.
+Square KDS version comparison uses the configured package name, currently `com.squareup.rst.kds`, to retrieve the available version from Google Play on the dashboard/API server. Android does not provide a reliable public API for arbitrary apps to read the live Play Store latest version directly from the tablet.
 
 ## Local HTTP Note
 

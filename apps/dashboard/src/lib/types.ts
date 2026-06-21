@@ -51,6 +51,7 @@ export interface PrinterCheck {
 export interface SquareKdsCheck {
   packageName?: string;
   installedVersion?: string;
+  availableVersion?: string;
   expectedVersion?: string;
   versionStatus: "match" | "mismatch" | "unknown" | "not_configured" | "not_installed";
   error?: string;

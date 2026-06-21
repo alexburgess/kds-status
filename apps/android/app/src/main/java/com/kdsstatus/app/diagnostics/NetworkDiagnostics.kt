@@ -122,13 +122,16 @@ class NetworkDiagnostics(private val context: Context) {
 
     private fun readSquareKds(config: DeviceConfigResponse): SquareKdsCheckPayload {
         val packageName = config.squareKds.packageName
-        val expectedVersion = config.squareKds.expectedVersion
+        val availableVersion = config.squareKds.availableVersion ?: config.squareKds.expectedVersion
+        val lookupError = config.squareKds.versionLookupError
 
         if (packageName.isNullOrBlank()) {
             return SquareKdsCheckPayload(
                 packageName = null,
-                expectedVersion = expectedVersion,
-                versionStatus = "not_configured"
+                availableVersion = availableVersion,
+                expectedVersion = availableVersion,
+                versionStatus = "not_configured",
+                error = lookupError
             )
         }
 
@@ -137,30 +140,34 @@ class NetworkDiagnostics(private val context: Context) {
             val packageInfo = context.packageManager.getPackageInfo(packageName, 0)
             val installedVersion = packageInfo.versionName
             val status = when {
-                expectedVersion.isNullOrBlank() -> "unknown"
-                installedVersion == expectedVersion -> "match"
+                availableVersion.isNullOrBlank() -> "unknown"
+                installedVersion == availableVersion -> "match"
                 else -> "mismatch"
             }
 
             SquareKdsCheckPayload(
                 packageName = packageName,
                 installedVersion = installedVersion,
-                expectedVersion = expectedVersion,
-                versionStatus = status
+                availableVersion = availableVersion,
+                expectedVersion = availableVersion,
+                versionStatus = status,
+                error = if (status == "unknown") lookupError ?: "Play Store version was not available" else lookupError
             )
         } catch (notFound: PackageManager.NameNotFoundException) {
             SquareKdsCheckPayload(
                 packageName = packageName,
-                expectedVersion = expectedVersion,
+                availableVersion = availableVersion,
+                expectedVersion = availableVersion,
                 versionStatus = "not_installed",
                 error = "Package is not installed or is not visible to this app"
             )
         } catch (error: SecurityException) {
             SquareKdsCheckPayload(
                 packageName = packageName,
-                expectedVersion = expectedVersion,
+                availableVersion = availableVersion,
+                expectedVersion = availableVersion,
                 versionStatus = "unknown",
-                error = error.message ?: "Package visibility denied"
+                error = error.message ?: lookupError ?: "Package visibility denied"
             )
         }
     }

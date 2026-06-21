@@ -54,8 +54,16 @@ export default async function DeviceDetailPage({
               <dd>{detail.latestReport?.activeTransport ?? "Unknown"}</dd>
             </div>
             <div>
-              <dt>Square KDS</dt>
+              <dt>Square KDS installed</dt>
               <dd>{detail.latestReport?.squareKds.installedVersion ?? "Not reported"}</dd>
+            </div>
+            <div>
+              <dt>Square KDS available</dt>
+              <dd>
+                {detail.latestReport?.squareKds.availableVersion ??
+                  detail.latestReport?.squareKds.expectedVersion ??
+                  "Unknown"}
+              </dd>
             </div>
           </dl>
         </article>
@@ -99,7 +107,10 @@ export default async function DeviceDetailPage({
                 <td>
                   {report.printerChecks.filter((printer) => printer.ok).length}/{report.printerChecks.length}
                 </td>
-                <td>{report.squareKds.installedVersion ?? report.squareKds.versionStatus}</td>
+                <td>
+                  {report.squareKds.installedVersion ?? report.squareKds.versionStatus}
+                  {report.squareKds.availableVersion ? ` / ${report.squareKds.availableVersion}` : ""}
+                </td>
               </tr>
             ))}
           </tbody>

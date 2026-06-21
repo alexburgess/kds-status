@@ -3,9 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
-        <!-- Confirm the exact Square KDS package from a real tablet or Miradore inventory. -->
-        <package android:name="com.squareup.kds" />
-        <package android:name="com.squareup.squarekds" />
+        <package android:name="com.squareup.rst.kds" />
     </queries>
 
     <application

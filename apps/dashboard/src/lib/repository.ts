@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { demoDevices } from "./demo-data";
 import { addDemoReport, getDemoReports } from "./demo-store";
 import { verifyDeviceSecret } from "./device-auth";
+import { lookupPlayStoreVersion } from "./play-store-version";
 import { createSupabaseServiceClient, isSupabaseConfigured } from "./supabase";
 import { summarizeDeviceStatus } from "./status";
 import type {
@@ -233,7 +234,10 @@ export async function saveStatusReport(device: DeviceDefinition, payload: Device
   return report;
 }
 
-export function buildDeviceConfig(device: DeviceDefinition) {
+export async function buildDeviceConfig(device: DeviceDefinition) {
+  const playStoreVersion = await lookupPlayStoreVersion(device.squareKdsPackageName);
+  const availableVersion = playStoreVersion.version ?? device.squareKdsExpectedVersion;
+
   return {
     deviceId: device.deviceId,
     displayName: device.displayName,
@@ -242,7 +246,12 @@ export function buildDeviceConfig(device: DeviceDefinition) {
     notes: device.notes,
     squareKds: {
       packageName: device.squareKdsPackageName,
-      expectedVersion: device.squareKdsExpectedVersion
+      availableVersion,
+      expectedVersion: availableVersion,
+      versionSource: playStoreVersion.version ? "play-store" : device.squareKdsExpectedVersion ? "definition-fallback" : playStoreVersion.source,
+      versionLookupError: playStoreVersion.error,
+      versionCheckedAt: playStoreVersion.checkedAt,
+      playStoreUpdatedAt: playStoreVersion.updatedAt
     },
     expectedSettings: device.expectedSettings,
     printers: device.printers.map((printer) => ({

@@ -16,5 +16,5 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid device credentials" }, { status: 401 });
   }
 
-  return Response.json(buildDeviceConfig(device));
+  return Response.json(await buildDeviceConfig(device));
 }

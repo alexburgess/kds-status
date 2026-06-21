@@ -3,9 +3,9 @@ import { demoDevices } from "@/lib/demo-data";
 import { compareVersion, summarizeDeviceStatus } from "@/lib/status";
 import type { StatusReport } from "@/lib/types";
 
-describe("status summary", () => {
-  const device = demoDevices[0];
+const device = demoDevices[0];
 
+describe("status summary", () => {
   it("marks a fresh passing report as healthy", () => {
     const report: StatusReport = {
       id: "ok-report",
@@ -63,5 +63,29 @@ describe("version comparison", () => {
   it("compares exact configured versions", () => {
     expect(compareVersion("6.0.1", "6.0.1")).toBe("match");
     expect(compareVersion("6.0.0", "6.0.1")).toBe("mismatch");
+  });
+
+  it("summarizes mismatches against the available Play Store version", () => {
+    const report: StatusReport = {
+      id: "version-mismatch",
+      deviceId: device.deviceId,
+      reportedAt: new Date().toISOString(),
+      localIp: "192.168.1.10",
+      activeTransport: "ethernet",
+      internet: { ok: true },
+      printerChecks: [],
+      squareKds: {
+        packageName: "com.squareup.rst.kds",
+        installedVersion: "7.11",
+        availableVersion: "7.12",
+        versionStatus: "mismatch"
+      },
+      appVersion: "0.1.0",
+      diagnostics: []
+    };
+
+    expect(summarizeDeviceStatus(device, report).checks).toContain(
+      "Square KDS version mismatch: 7.11 available 7.12"
+    );
   });
 });

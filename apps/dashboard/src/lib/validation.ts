@@ -34,6 +34,7 @@ export const DeviceStatusPayloadSchema = z.object({
   squareKds: z.object({
     packageName: z.string().optional(),
     installedVersion: z.string().optional(),
+    availableVersion: z.string().optional(),
     expectedVersion: z.string().optional(),
     versionStatus: z.enum(["match", "mismatch", "unknown", "not_configured", "not_installed"]),
     error: z.string().optional()

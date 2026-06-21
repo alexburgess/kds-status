@@ -14,7 +14,7 @@ Local checks:
 - Local IPv4 address via `ConnectivityManager` / `LinkProperties`
 - Internet reachability via TCP connect to `clients3.google.com:443`
 - Printer reachability via TCP connect to each configured printer host/port
-- Square KDS package version when a package name is configured and visible
+- Square KDS package version for `com.squareup.rst.kds` when the app is installed and visible
 
 Build from this directory with Homebrew Gradle and the Android command-line SDK:
 
@@ -23,5 +23,3 @@ Build from this directory with Homebrew Gradle and the Android command-line SDK:
 ```
 
 This repo does not commit a Gradle wrapper binary. On this Mac, Gradle is installed through Homebrew and Android builds should use JDK 17, not the newer Homebrew default OpenJDK.
-
-Before production rollout, confirm the exact Square KDS Android package name from a real tablet or Miradore inventory and add it to `AndroidManifest.xml` under `<queries>`.
