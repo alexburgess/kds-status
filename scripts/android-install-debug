@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+"$ROOT_DIR/scripts/android-gradle" :app:assembleDebug
+"$ROOT_DIR/scripts/android-adb" install -r "$ROOT_DIR/apps/android/app/build/outputs/apk/debug/app-debug.apk"

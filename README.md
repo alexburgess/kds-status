@@ -33,6 +33,13 @@ The debug APK is written to `apps/android/app/build/outputs/apk/debug/app-debug.
 
 See [docs/kds-device-testing.md](docs/kds-device-testing.md) for the actual KDS tablet testing flow.
 
+The local tablet emulator is named `kds-tablet`:
+
+```bash
+./scripts/android-emulator -avd kds-tablet
+./scripts/android-install-debug
+```
+
 ## Device API
 
 Device requests authenticate with:

@@ -19,6 +19,26 @@ Use this when you only want to see what the staff-facing screen looks like on th
 
 Preview mode uses sample data. It is only for checking layout, readability, scrolling, and whether the screen makes sense on the physical KDS tablet.
 
+## Emulator Check
+
+This Mac has an Android tablet emulator named `kds-tablet`.
+
+Launch it:
+
+```bash
+./scripts/android-emulator -avd kds-tablet
+```
+
+In a second terminal, build and install the debug app:
+
+```bash
+./scripts/android-install-debug
+```
+
+Open **KDS Status** inside the emulator. If no managed config is present, tap **Preview device screen**.
+
+The emulator is good for layout, scrolling, typography, and the app flow. It is not a perfect replacement for a real KDS tablet because it does not receive Miradore managed configuration or sit on the same kitchen VLAN/printer path.
+
 ## Real End-To-End Check
 
 Use this when you want the tablet to load its actual definition and report diagnostics.
