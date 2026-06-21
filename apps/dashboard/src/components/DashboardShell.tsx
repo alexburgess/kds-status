@@ -48,10 +48,10 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
             <FleetIcon />
             Fleet
           </a>
-          <a className="nav-item" href="#definitions">
+          <Link className="nav-item" href="/definitions">
             <SettingsIcon />
             Definitions
-          </a>
+          </Link>
         </nav>
 
         <div className="sidebar-note">
@@ -171,8 +171,8 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
                 </div>
               </section>
 
-              <section className="detail-section" id="definitions">
-                <h3>Definition Editor</h3>
+              <section className="detail-section">
+                <h3>Definition</h3>
                 <DefinitionEditor
                   device={visibleDevice}
                   onChange={(next) => {
@@ -181,7 +181,10 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
                   }}
                   onSave={() => setDraftSaved(true)}
                 />
-                {draftSaved ? <p className="save-state">Draft saved locally. Wire Supabase admin updates next.</p> : null}
+                {draftSaved ? <p className="save-state">Draft updated on this screen only.</p> : null}
+                <Link className="secondary-link" href="/definitions">
+                  Create or edit a real device definition
+                </Link>
               </section>
             </aside>
           ) : null}
@@ -279,7 +282,7 @@ function DefinitionEditor({
 
       <button className="primary-button" type="submit">
         <SaveIcon />
-        Save draft
+        Preview draft
       </button>
     </form>
   );

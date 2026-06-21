@@ -16,12 +16,12 @@ Local checks:
 - Printer reachability via TCP connect to each configured printer host/port
 - Square KDS package version when a package name is configured and visible
 
-Build from this directory with Android Studio or Gradle:
+Build from this directory with Homebrew Gradle and the Android command-line SDK:
 
 ```bash
-./gradlew assembleDebug
+../../scripts/android-gradle :app:assembleDebug
 ```
 
-This repo does not commit a Gradle wrapper binary yet. If Android Studio opens the project, use its Gradle tooling to generate or run the wrapper before CI distribution.
+This repo does not commit a Gradle wrapper binary. On this Mac, Gradle is installed through Homebrew and Android builds should use JDK 17, not the newer Homebrew default OpenJDK.
 
 Before production rollout, confirm the exact Square KDS Android package name from a real tablet or Miradore inventory and add it to `AndroidManifest.xml` under `<queries>`.

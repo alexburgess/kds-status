@@ -21,6 +21,14 @@ Open `http://localhost:3000`.
 
 Without Supabase credentials, the dashboard runs in demo mode using the seeded device `expo-line-01` and secret `demo-secret`.
 
+## Android CLI Build
+
+This repo intentionally does not commit a Gradle wrapper binary. On this Mac, use Homebrew Gradle plus the Android command-line SDK:
+
+```bash
+./scripts/android-gradle :app:testDebugUnitTest :app:assembleDebug
+```
+
 ## Device API
 
 Device requests authenticate with:
@@ -34,3 +42,12 @@ Endpoints:
 - `POST /api/device/status`
 
 See [docs/setup.md](docs/setup.md) and [docs/miradore-managed-config.md](docs/miradore-managed-config.md).
+
+## Defining A Device
+
+Open `/definitions` in the dashboard. The builder creates:
+
+- Supabase SQL for the location, device, expected KDS settings, and optional printer.
+- Miradore managed configuration values for `device_id`, `device_secret`, and `api_base_url`.
+
+The fleet page side panel only previews the selected device definition. Real creation/editing starts from the Definitions page.

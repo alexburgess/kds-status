@@ -27,6 +27,28 @@ The dashboard stores only `sha256(deviceSecret)` in `devices.device_secret_hash`
 
 For production, use long random secrets and rotate them if a tablet is retired or replaced.
 
+## Define A Device Yourself
+
+The easiest path is the dashboard builder:
+
+1. Run the dashboard and open `/definitions`.
+2. Fill in the location, display name, assigned `deviceId`, role, expected settings, and printer target.
+3. Copy the generated Supabase SQL and run it in the Supabase SQL editor.
+4. Copy the generated Miradore managed configuration values into that tablet's app configuration.
+
+The generated SQL uses `encode(digest('<raw secret>', 'sha256'), 'hex')`, so Supabase stores only the hashed secret. Miradore gets the raw secret because the Android tablet needs it to authenticate.
+
+If you are editing manually, the minimum required database fields are:
+
+- `locations.name` and `locations.slug`
+- `devices.device_id`
+- `devices.device_secret_hash`
+- `devices.display_name`
+- `devices.role`
+- `devices.expected_settings`
+
+Add rows to `printers` only when that KDS screen should test a printer.
+
 ## Local API Smoke Test
 
 ```bash
