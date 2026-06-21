@@ -35,11 +35,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kdsstatus.app.data.AppConfig
 import com.kdsstatus.app.data.DeviceConfigResponse
+import com.kdsstatus.app.data.ExpectedSetting
+import com.kdsstatus.app.data.InternetCheckPayload
 import com.kdsstatus.app.data.ManagedConfigRepository
+import com.kdsstatus.app.data.PrinterCheckPayload
+import com.kdsstatus.app.data.PrinterTarget
+import com.kdsstatus.app.data.SquareKdsCheckPayload
+import com.kdsstatus.app.data.SquareKdsDefinition
 import com.kdsstatus.app.data.StatusReportPayload
 import com.kdsstatus.app.diagnostics.NetworkDiagnostics
 import com.kdsstatus.app.network.DeviceApiClient
@@ -104,6 +111,18 @@ private fun KdsStatusApp(
         state = state,
         onRefresh = {
             state = ScreenState.Loading
+        },
+        onPreview = {
+            state = ScreenState.Ready(
+                appConfig = AppConfig(
+                    deviceId = "preview-kds",
+                    deviceSecret = "",
+                    apiBaseUrl = ""
+                ),
+                remoteConfig = previewDeviceConfig(),
+                report = previewStatusReport(),
+                postError = "Preview only. No dashboard upload was attempted."
+            )
         }
     )
 
@@ -117,7 +136,8 @@ private fun KdsStatusApp(
 @Composable
 private fun StatusContent(
     state: ScreenState,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onPreview: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -130,7 +150,7 @@ private fun StatusContent(
 
         when (state) {
             ScreenState.Loading -> LoadingCard()
-            is ScreenState.MissingConfig -> MissingConfigCard(state.config)
+            is ScreenState.MissingConfig -> MissingConfigCard(state.config, onPreview)
             is ScreenState.Error -> ErrorCard(state.message, onRefresh)
             is ScreenState.Ready -> ReadyScreen(state, onRefresh)
         }
@@ -149,13 +169,21 @@ private fun LoadingCard() {
 }
 
 @Composable
-private fun MissingConfigCard(config: AppConfig) {
+private fun MissingConfigCard(config: AppConfig, onPreview: () -> Unit) {
     StatusCard {
         Text("Setup required", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(StatusFormatter.missingConfigMessage(config.missingKeys), color = Color(0xFFB42318))
         Spacer(Modifier.height(8.dp))
         Text("Set device_id, device_secret, and api_base_url in Miradore managed app configuration.")
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onPreview,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F6D7A)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Preview device screen")
+        }
     }
 }
 
@@ -299,9 +327,66 @@ private fun StatusRow(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Color(0xFF5F6F7E), fontSize = 13.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Color(0xFF14202B), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            value,
+            color = Color(0xFF14202B),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1.2f),
+            textAlign = TextAlign.End
+        )
     }
 }
+
+private fun previewDeviceConfig() = DeviceConfigResponse(
+    deviceId = "preview-kds",
+    displayName = "Expo Line 01",
+    locationName = "Downtown Kitchen",
+    role = "Expo screen",
+    notes = "Preview data. Real tablets load this from the dashboard using their assigned deviceId.",
+    squareKds = SquareKdsDefinition(
+        packageName = "com.squareup.kds",
+        expectedVersion = "6.0.1"
+    ),
+    expectedSettings = listOf(
+        ExpectedSetting("Tickets", "Display mode", "Order view"),
+        ExpectedSetting("Tickets", "Fulfillment", "Expo controls entire order"),
+        ExpectedSetting("Notifications", "Sound", "Enabled"),
+        ExpectedSetting("Hardware", "Printer", "Hot line printer")
+    ),
+    printers = listOf(
+        PrinterTarget(
+            id = "preview-printer",
+            name = "Hot line printer",
+            host = "192.168.20.61",
+            port = 9100
+        )
+    )
+)
+
+private fun previewStatusReport() = StatusReportPayload(
+    localIp = "192.168.20.44",
+    activeTransport = "ethernet",
+    internet = InternetCheckPayload(ok = true, latencyMs = 41),
+    printerChecks = listOf(
+        PrinterCheckPayload(
+            printerId = "preview-printer",
+            name = "Hot line printer",
+            host = "192.168.20.61",
+            port = 9100,
+            ok = true,
+            latencyMs = 8
+        )
+    ),
+    squareKds = SquareKdsCheckPayload(
+        packageName = "com.squareup.kds",
+        installedVersion = "6.0.1",
+        expectedVersion = "6.0.1",
+        versionStatus = "match"
+    ),
+    appVersion = BuildConfig.VERSION_NAME,
+    diagnostics = listOf("Preview mode is using sample data.")
+)
 
 private sealed interface ScreenState {
     data object Loading : ScreenState

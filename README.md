@@ -29,6 +29,10 @@ This repo intentionally does not commit a Gradle wrapper binary. On this Mac, us
 ./scripts/android-gradle :app:testDebugUnitTest :app:assembleDebug
 ```
 
+The debug APK is written to `apps/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+See [docs/kds-device-testing.md](docs/kds-device-testing.md) for the actual KDS tablet testing flow.
+
 ## Device API
 
 Device requests authenticate with:

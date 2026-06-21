@@ -19,3 +19,5 @@ Recommended Miradore flow:
 5. Confirm the device can fetch `GET /api/device/config`.
 
 Use assigned `deviceId` as the source of truth. Hardware MAC can be reported later if you can enforce hardware MAC mode for a managed Wi-Fi network, but it should not be required for identity.
+
+For first-tablet testing, see [kds-device-testing.md](kds-device-testing.md). The debug APK can use a local HTTP dashboard URL such as `http://10.0.200.146:3000`; production should use HTTPS.
