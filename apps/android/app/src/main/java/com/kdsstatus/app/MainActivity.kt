@@ -4,12 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,13 +21,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,9 +44,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kdsstatus.app.data.AppConfig
@@ -171,20 +184,25 @@ private fun StatusContent(
     onRefresh: () -> Unit,
     onPreview: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text("KDS Status", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
+    when (state) {
+        is ScreenState.Ready -> ReadyScreen(state, onRefresh)
+        else -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("KDS Status", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14202B))
 
-        when (state) {
-            ScreenState.Loading -> LoadingCard()
-            is ScreenState.MissingConfig -> MissingConfigCard(state.config, onPreview)
-            is ScreenState.Error -> ErrorCard(state.message, onRefresh)
-            is ScreenState.Ready -> ReadyScreen(state, onRefresh)
+                when (state) {
+                    ScreenState.Loading -> LoadingCard()
+                    is ScreenState.MissingConfig -> MissingConfigCard(state.config, onPreview)
+                    is ScreenState.Error -> ErrorCard(state.message, onRefresh)
+                    is ScreenState.Ready -> Unit
+                }
+            }
         }
     }
 }
@@ -234,78 +252,356 @@ private fun ErrorCard(message: String, onRefresh: () -> Unit) {
 
 @Composable
 private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
-    HeaderCard(
-        config = state.remoteConfig,
-        report = state.report,
-        postError = state.postError,
-        configCollectedAtMillis = state.configCollectedAtMillis,
-        isUsingCachedConfig = state.isUsingCachedConfig,
-        configWarning = state.configWarning
-    )
-
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF4F4F6))
     ) {
-        ThisDevicePanel(
-            report = state.report,
-            modifier = Modifier.weight(1f)
-        )
-        ConnectedDevicesPanel(
-            report = state.report,
-            modifier = Modifier.weight(1f)
-        )
-        SquareKdsConfigurationPanel(
+        StationOverviewPanel(
             config = state.remoteConfig,
             report = state.report,
-            modifier = Modifier.weight(1f)
+            postError = state.postError,
+            configCollectedAtMillis = state.configCollectedAtMillis,
+            isUsingCachedConfig = state.isUsingCachedConfig,
+            configWarning = state.configWarning,
+            onRefresh = onRefresh,
+            modifier = Modifier
+                .width(430.dp)
+                .fillMaxHeight()
         )
-    }
-
-    Button(
-        onClick = onRefresh,
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F6D7A)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Run diagnostics again")
+        ConfigurationWorkspace(
+            config = state.remoteConfig,
+            report = state.report,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        )
     }
 }
 
 @Composable
-private fun HeaderCard(
+private fun StationOverviewPanel(
     config: DeviceConfigResponse,
     report: StatusReportPayload,
     postError: String?,
     configCollectedAtMillis: Long,
     isUsingCachedConfig: Boolean,
-    configWarning: String?
+    configWarning: String?,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    StatusCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(config.displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("${config.locationName} · ${config.role}", color = Color(0xFF5F6F7E))
-            }
-            StatusRow(
-                label = "Report",
-                value = if (postError == null) "Uploaded" else "Upload failed: $postError",
-                modifier = Modifier.weight(1.6f)
-            )
-            StatusRow("App version", report.appVersion, modifier = Modifier.weight(0.9f))
-        }
-        StatusRow(
-            "Configuration",
-            "${if (isUsingCachedConfig) "Cached" else "Collected"} ${StatusFormatter.configCollectedAt(configCollectedAtMillis)}"
+    Column(
+        modifier = modifier
+            .background(Color.White)
+            .padding(horizontal = 28.dp, vertical = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Text(
+            config.displayName,
+            color = Color(0xFF050505),
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
-        configWarning?.let { warning ->
-            Text(warning, color = Color(0xFF9A620B), fontSize = 13.sp)
+
+        InfoPillSection(report)
+
+        ConnectivityCard(
+            title = "CONNECTIVITY OF THIS DEVICE",
+            ok = report.internet.ok,
+            message = if (report.internet.ok) {
+                "THIS SCREEN IS CONNECTED TO\nTHE INTERNET"
+            } else {
+                "THIS SCREEN CANNOT REACH\nTHE INTERNET"
+            },
+            detail = report.internet.error,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        )
+
+        val printer = report.printerChecks.firstOrNull()
+        val printersOk = when {
+            report.printerChecks.isEmpty() -> null
+            report.printerChecks.all { printerCheck -> printerCheck.ok } -> true
+            else -> false
         }
-        if (config.notes.isNotBlank()) {
-            Text(config.notes, color = Color(0xFF263847))
+        ConnectivityCard(
+            title = "PRINTER CONNECTIVITY",
+            ok = printersOk,
+            message = printerConnectivityMessage(printer),
+            detail = printerConnectivityDetail(printer),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "${if (isUsingCachedConfig) "Cached" else "Collected"} config ${StatusFormatter.configCollectedAt(configCollectedAtMillis)}",
+                color = Color(0xFF5F6368),
+                fontSize = 12.sp
+            )
+            postError?.takeUnless { error -> error.contains("Preview only", ignoreCase = true) }?.let { error ->
+                Text("Report upload failed: $error", color = Color(0xFF9A620B), fontSize = 12.sp)
+            }
+            configWarning?.let { warning ->
+                Text(warning, color = Color(0xFF9A620B), fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+
+        Button(
+            onClick = onRefresh,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111111)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Run diagnostics again")
+        }
+    }
+}
+
+@Composable
+private fun ConfigurationWorkspace(
+    config: DeviceConfigResponse,
+    report: StatusReportPayload,
+    modifier: Modifier = Modifier
+) {
+    val pages = remember(config.expectedSettings, config.printers) {
+        buildConfigurationPages(config)
+    }
+    var selectedPageIndex by remember { mutableStateOf(0) }
+    val selectedPage = pages[selectedPageIndex.coerceIn(pages.indices)]
+
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp, vertical = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            pages.forEachIndexed { index, page ->
+                FilterChip(
+                    selected = selectedPageIndex == index,
+                    onClick = { selectedPageIndex = index },
+                    label = {
+                        Text(
+                            page.title,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    shape = CircleShape,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color.Black,
+                        selectedLabelColor = Color.White,
+                        containerColor = Color(0xFFE0E0E0),
+                        labelColor = Color(0xFF4D4A58)
+                    ),
+                    border = null,
+                )
+            }
+        }
+
+        Image(
+            painter = painterResource(selectedPage.imageRes),
+            contentDescription = "${selectedPage.title} Square KDS settings screenshot",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(selectedPage.aspectRatio)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White)
+        )
+
+        ConfigurationDetails(page = selectedPage, report = report)
+    }
+}
+
+@Composable
+private fun InfoPillSection(report: StatusReportPayload) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            InfoPill("MAC", report.localMacAddress ?: "Unavailable")
+            InfoPill("IP", report.localIp ?: "Unknown")
+        }
+        Row {
+            InfoPill("V", squareKdsVersionPill(report))
+        }
+    }
+}
+
+@Composable
+private fun InfoPill(prefix: String, value: String) {
+    AssistChip(
+        onClick = {},
+        label = {
+            Text(
+                "$prefix  $value",
+                color = Color(0xFF3C4043),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        shape = CircleShape,
+        colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFF0F0F0)),
+        border = null,
+        modifier = Modifier.height(34.dp)
+    )
+}
+
+@Composable
+private fun ConnectivityCard(
+    title: String,
+    ok: Boolean?,
+    message: String,
+    detail: String?,
+    modifier: Modifier = Modifier
+) {
+    val statusColor = when (ok) {
+        true -> Color(0xFF34C759)
+        false -> Color(0xFFE5484D)
+        null -> Color(0xFFFFB020)
+    }
+    val symbol = when (ok) {
+        true -> "✓"
+        false -> "×"
+        null -> "?"
+    }
+
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F4F4)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .background(statusColor)
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Text(
+                    title,
+                    color = Color(0xFF1F1F1F),
+                    fontSize = 14.sp,
+                    letterSpacing = 3.sp,
+                    textAlign = TextAlign.Center
+                )
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(statusColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(symbol, color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        message,
+                        color = Color(0xFF1F1F1F),
+                        fontSize = 14.sp,
+                        letterSpacing = 2.sp,
+                        lineHeight = 19.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    detail?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            it,
+                            color = Color(0xFF6F6F6F),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfigurationDetails(page: ConfigurationPageSpec, report: StatusReportPayload) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("Configuration for this page:", color = Color(0xFF1F1F1F), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        if (page.settings.isEmpty()) {
+            AssistChip(
+                onClick = {},
+                label = { Text("No supplied configuration details") },
+                shape = CircleShape,
+                colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFEDEDED)),
+                border = null
+            )
+        } else {
+            page.settings.forEach { setting ->
+                ConfigurationChoiceRow(setting)
+            }
+        }
+        report.squareKds.error?.let { error ->
+            Text(error, color = Color(0xFF9A620B), fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun ConfigurationChoiceRow(setting: ExpectedSetting) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(setting.setting, color = Color(0xFF3C4043), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val options = optionsForSetting(setting)
+            if (options.isEmpty()) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(setting.expected) },
+                    shape = CircleShape,
+                    colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFEDEDED)),
+                    border = null
+                )
+            } else {
+                options.forEach { option ->
+                    val selected = isOptionSelected(option, setting.expected)
+                    FilterChip(
+                        selected = selected,
+                        onClick = {},
+                        label = { Text(option, fontWeight = FontWeight.SemiBold) },
+                        shape = CircleShape,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF222222),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color(0xFFEDEDED),
+                            labelColor = Color(0xFF6F6F6F)
+                        ),
+                        border = null
+                    )
+                }
+            }
         }
     }
 }
@@ -491,6 +787,119 @@ private fun StatusDot(ok: Boolean?) {
     )
 }
 
+private data class ConfigurationPageSpec(
+    val title: String,
+    val imageRes: Int,
+    val aspectRatio: Float,
+    val settings: List<ExpectedSetting>
+)
+
+private fun buildConfigurationPages(config: DeviceConfigResponse): List<ConfigurationPageSpec> {
+    val settings = config.expectedSettings
+    val generalSettings = settings.settingsForKeywords("general", "display")
+        .ifEmpty {
+            listOf(
+                ExpectedSetting("General", "Display name", config.displayName),
+                ExpectedSetting("General", "Display type", displayTypeForRole(config.role))
+            )
+        }
+
+    return listOf(
+        ConfigurationPageSpec(
+            title = "General",
+            imageRes = R.drawable.kds_settings_general,
+            aspectRatio = 2960f / 1848f,
+            settings = generalSettings
+        ),
+        ConfigurationPageSpec(
+            title = "Items & categories",
+            imageRes = R.drawable.kds_settings_items_categories,
+            aspectRatio = 2960f / 2256f,
+            settings = settings.settingsForKeywords("item", "category", "categories")
+        ),
+        ConfigurationPageSpec(
+            title = "Printers",
+            imageRes = R.drawable.kds_settings_printers,
+            aspectRatio = 2960f / 3436f,
+            settings = settings.settingsForKeywords("printer").ifEmpty {
+                config.printers.flatMap { printer ->
+                    listOf(
+                        ExpectedSetting("Printers", "${printer.name} IP", "${printer.host}:${printer.port}"),
+                        ExpectedSetting("Printers", "${printer.name} MAC", printer.macAddress ?: "Unavailable")
+                    )
+                }
+            }
+        ),
+        ConfigurationPageSpec(
+            title = "Source & Fulfilment",
+            imageRes = R.drawable.kds_settings_source_fulfilment,
+            aspectRatio = 2960f / 2212f,
+            settings = settings.settingsForKeywords("source", "fulfil", "fulfill")
+        ),
+        ConfigurationPageSpec(
+            title = "Tickets",
+            imageRes = R.drawable.kds_settings_tickets,
+            aspectRatio = 2960f / 1848f,
+            settings = settings.settingsForKeywords("ticket", "coursing", "timer", "alert")
+        )
+    )
+}
+
+private fun List<ExpectedSetting>.settingsForKeywords(vararg keywords: String): List<ExpectedSetting> =
+    filter { setting ->
+        val searchable = "${setting.section} ${setting.setting}".lowercase()
+        keywords.any { keyword -> searchable.contains(keyword.lowercase()) }
+    }
+
+private fun displayTypeForRole(role: String): String =
+    if (role.contains("prep", ignoreCase = true)) "Prep" else "Expeditor"
+
+private fun optionsForSetting(setting: ExpectedSetting): List<String> {
+    val settingName = setting.setting.lowercase()
+    val expected = setting.expected.trim()
+
+    return when {
+        settingName.contains("display type") -> listOf("Expeditor", "Prep")
+        expected.equals("on", ignoreCase = true) || expected.equals("off", ignoreCase = true) -> listOf("On", "Off")
+        expected.equals("enabled", ignoreCase = true) || expected.equals("disabled", ignoreCase = true) -> {
+            listOf("Enabled", "Disabled")
+        }
+        expected.equals("yes", ignoreCase = true) || expected.equals("no", ignoreCase = true) -> listOf("Yes", "No")
+        expected.contains(",") -> expected.split(",").map { item -> item.trim() }.filter { item -> item.isNotBlank() }
+        else -> emptyList()
+    }
+}
+
+private fun isOptionSelected(option: String, expected: String): Boolean {
+    val expectedOptions = expected.split(",").map { item -> item.trim() }
+    return expectedOptions.any { item -> item.equals(option, ignoreCase = true) }
+}
+
+private fun squareKdsVersionPill(report: StatusReportPayload): String {
+    val installedVersion = report.squareKds.installedVersion ?: "Unknown"
+    val versionSuffix = when (report.squareKds.versionStatus) {
+        "match" -> "latest version"
+        "mismatch" -> "update available"
+        "not_installed" -> "not visible"
+        else -> "check version"
+    }
+
+    return "$installedVersion $versionSuffix"
+}
+
+private fun printerConnectivityMessage(printer: PrinterCheckPayload?): String =
+    when {
+        printer == null -> "NO PRINTER IS CONFIGURED\nFOR THIS SCREEN"
+        printer.ok -> "THIS SCREEN CAN REACH\nTHE PRINTER"
+        else -> "THIS SCREEN CANNOT REACH\nTHE PRINTER"
+    }
+
+private fun printerConnectivityDetail(printer: PrinterCheckPayload?): String? =
+    printer?.let {
+        val printerIdentity = "MAC ${it.macAddress ?: "unavailable"}  IP ${it.host}"
+        if (it.ok) printerIdentity else listOfNotNull(printerIdentity, it.error).joinToString("\n")
+    }
+
 private fun previewDeviceConfig() = DeviceConfigResponse(
     deviceId = "preview-kds",
     displayName = "Expo Line 01",
@@ -504,10 +913,12 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
         versionSource = "play-store"
     ),
     expectedSettings = listOf(
+        ExpectedSetting("General", "Display type", "Expeditor"),
         ExpectedSetting("Kitchen Routing", "Routing mode", "Expo controls entire order"),
         ExpectedSetting("Kitchen Routing", "Station filter", "All items"),
         ExpectedSetting("Sources", "Accepted sources", "POS, Online, Delivery"),
-        ExpectedSetting("Sources", "Order visibility", "All open tickets")
+        ExpectedSetting("Sources", "Order visibility", "All open tickets"),
+        ExpectedSetting("Tickets", "No open tickets", "Enabled")
     ),
     printers = listOf(
         PrinterTarget(
