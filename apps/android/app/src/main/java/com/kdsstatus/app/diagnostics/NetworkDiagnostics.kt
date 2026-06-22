@@ -25,6 +25,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 class NetworkDiagnostics(private val context: Context) {
+    fun readLocalMacAddress(): String? = readNetworkState().localMacAddress
+
     suspend fun run(config: DeviceConfigResponse): StatusReportPayload = coroutineScope {
         val networkState = readNetworkState()
         val internet = async { checkInternet() }

@@ -2,7 +2,7 @@
 
 KDS Status is a fleet dashboard and Android companion app for diagnosing Square KDS tablets.
 
-The first implementation uses an assigned `deviceId` rather than MAC address. Miradore should push each tablet's `device_id`, `device_secret`, and `api_base_url` as Android managed app configuration values.
+KDS tablets identify themselves by Ethernet MAC address when Android exposes it. Miradore still pushes `device_secret` and `api_base_url`, and may also push `device_id` as a fallback label.
 
 ## Apps
 
@@ -44,7 +44,7 @@ The local tablet emulator is named `kds-tablet`:
 
 Device requests authenticate with:
 
-- `X-Device-Id`
+- `X-Device-Mac-Address` when available, otherwise `X-Device-Id`
 - `X-Device-Secret`
 
 Endpoints:
@@ -59,6 +59,6 @@ See [docs/setup.md](docs/setup.md) and [docs/miradore-managed-config.md](docs/mi
 Open `/definitions` in the dashboard. The builder creates:
 
 - Supabase SQL for the location, device, expected KDS settings, and optional printer.
-- Miradore managed configuration values for `device_id`, `device_secret`, and `api_base_url`.
+- Miradore managed configuration values for `device_secret`, `api_base_url`, and optional fallback `device_id`.
 
 The fleet page side panel only previews the selected device definition. Real creation/editing starts from the Definitions page.

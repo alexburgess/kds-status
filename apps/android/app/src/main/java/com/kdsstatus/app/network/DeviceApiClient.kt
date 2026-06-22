@@ -10,7 +10,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class DeviceApiClient(private val appConfig: AppConfig) {
+class DeviceApiClient(
+    private val appConfig: AppConfig,
+    private val deviceMacAddress: String?
+) {
     private val json = Json {
         ignoreUnknownKeys = true
     }
@@ -46,7 +49,12 @@ class DeviceApiClient(private val appConfig: AppConfig) {
             requestMethod = method
             connectTimeout = 5000
             readTimeout = 5000
-            setRequestProperty("X-Device-Id", appConfig.deviceId)
+            if (appConfig.deviceId.isNotBlank()) {
+                setRequestProperty("X-Device-Id", appConfig.deviceId)
+            }
+            if (!deviceMacAddress.isNullOrBlank()) {
+                setRequestProperty("X-Device-Mac-Address", deviceMacAddress)
+            }
             setRequestProperty("X-Device-Secret", appConfig.deviceSecret)
         }
     }

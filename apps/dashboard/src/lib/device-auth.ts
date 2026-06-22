@@ -15,13 +15,27 @@ export function verifyDeviceSecret(secret: string, expectedHash: string) {
   return timingSafeEqual(actual, expected);
 }
 
+export function normalizeMacAddress(macAddress: string | null | undefined) {
+  const normalized = macAddress
+    ?.trim()
+    .toLowerCase()
+    .replaceAll("-", ":");
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(normalized) ? normalized : undefined;
+}
+
 export function readDeviceAuthHeaders(headers: Headers) {
-  const deviceId = headers.get("x-device-id")?.trim();
+  const deviceId = headers.get("x-device-id")?.trim() || undefined;
+  const deviceMacAddress = normalizeMacAddress(headers.get("x-device-mac-address"));
   const deviceSecret = headers.get("x-device-secret")?.trim();
 
-  if (!deviceId || !deviceSecret) {
+  if ((!deviceId && !deviceMacAddress) || !deviceSecret) {
     return null;
   }
 
-  return { deviceId, deviceSecret };
+  return { deviceId, deviceMacAddress, deviceSecret };
 }

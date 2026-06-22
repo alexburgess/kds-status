@@ -59,10 +59,11 @@ Use this when you want the tablet to load its actual definition and report diagn
 4. Run the generated Supabase SQL, or use the seeded demo device for the first test:
 
    ```text
-   device_id=expo-line-01
    device_secret=demo-secret
    api_base_url=http://YOUR-COMPUTER-LAN-IP:3000
    ```
+
+   `device_id=expo-line-01` can still be set as a fallback, but Ethernet MAC address is preferred when Android exposes it.
 
 5. In Miradore, set those managed app configuration values for the test tablet.
 6. Reopen **KDS Status** on the tablet.
@@ -76,6 +77,7 @@ Expected result:
 - It tests internet reachability.
 - It tests configured printer host/port reachability.
 - It reports status back to the dashboard.
+- After one successful config fetch, it can still show the staff screen from cached configuration if the dashboard/API is unavailable. The header shows when that cached configuration was collected.
 
 Square KDS version comparison uses the configured package name, currently `com.squareup.rst.kds`, to retrieve the available version from Google Play on the dashboard/API server. Android does not provide a reliable public API for arbitrary apps to read the live Play Store latest version directly from the tablet.
 
@@ -88,6 +90,6 @@ Production deployments should use HTTPS for `api_base_url`.
 ## Troubleshooting
 
 - If the tablet cannot fetch config, confirm it can reach your computer's LAN IP and that macOS firewall is not blocking incoming connections.
-- If the app shows setup required, Miradore has not delivered all three keys: `device_id`, `device_secret`, and `api_base_url`.
+- If the app shows setup required, Miradore has not delivered `device_secret` and `api_base_url`, or Android cannot expose a MAC address and `device_id` is also blank.
 - If printer checks fail, verify the printer IP and port from the same network/VLAN as the tablet.
 - If Square KDS version says package not configured, set the package name after confirming it from Miradore inventory or the real device.

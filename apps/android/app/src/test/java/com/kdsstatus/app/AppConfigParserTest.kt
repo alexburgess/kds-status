@@ -22,8 +22,21 @@ class AppConfigParserTest {
     }
 
     @Test
+    fun deviceIdIsOptionalWhenAnotherIdentifierIsAvailable() {
+        val config = AppConfigParser.parse(
+            mapOf(
+                "device_secret" to "demo-secret",
+                "api_base_url" to "https://kds.example.com/"
+            )
+        )
+
+        assertTrue(config.isComplete)
+        assertEquals("", config.deviceId)
+    }
+
+    @Test
     fun reportsMissingKeys() {
-        val config = AppConfigParser.parse(mapOf("device_id" to "expo-line-01"))
+        val config = AppConfigParser.parse(emptyMap())
 
         assertEquals(listOf("device_secret", "api_base_url"), config.missingKeys)
     }

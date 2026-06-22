@@ -21,9 +21,9 @@ If Supabase values are not present, the dashboard uses in-memory demo data.
 
 ## Device API Authentication
 
-Each tablet has a stable assigned `deviceId` and a random `deviceSecret`.
+Each tablet has a stable Ethernet MAC address, an optional assigned `deviceId`, and a random `deviceSecret`.
 
-The dashboard stores only `sha256(deviceSecret)` in `devices.device_secret_hash`. Devices send the raw secret in the `X-Device-Secret` header over HTTPS.
+The dashboard stores only `sha256(deviceSecret)` in `devices.device_secret_hash`. Devices send the raw secret in the `X-Device-Secret` header over HTTPS. When Android can read the Ethernet MAC address, the app sends it as `X-Device-Mac-Address` and the API uses that as the primary identifier. `X-Device-Id` remains a fallback.
 
 For production, use long random secrets and rotate them if a tablet is retired or replaced.
 
@@ -32,7 +32,7 @@ For production, use long random secrets and rotate them if a tablet is retired o
 The easiest path is the dashboard builder:
 
 1. Run the dashboard and open `/definitions`.
-2. Fill in the location, display name, assigned `deviceId`, role, Square KDS package name, expected settings, and printer target.
+2. Fill in the location, display name, assigned `deviceId`, KDS MAC address, role, Square KDS package name, expected settings, and printer target.
 3. Copy the generated Supabase SQL and run it in the Supabase SQL editor.
 4. Copy the generated Miradore managed configuration values into that tablet's app configuration.
 
@@ -42,6 +42,7 @@ If you are editing manually, the minimum required database fields are:
 
 - `locations.name` and `locations.slug`
 - `devices.device_id`
+- `devices.mac_address`
 - `devices.device_secret_hash`
 - `devices.display_name`
 - `devices.role`
@@ -54,7 +55,7 @@ The Square KDS version is not typed into the definition. When a tablet fetches `
 ## Local API Smoke Test
 
 ```bash
-curl -H "X-Device-Id: expo-line-01" \
+curl -H "X-Device-Mac-Address: 02:00:00:12:34:44" \
   -H "X-Device-Secret: demo-secret" \
   http://localhost:3000/api/device/config
 ```
@@ -62,7 +63,7 @@ curl -H "X-Device-Id: expo-line-01" \
 ```bash
 curl -X POST http://localhost:3000/api/device/status \
   -H "Content-Type: application/json" \
-  -H "X-Device-Id: expo-line-01" \
+  -H "X-Device-Mac-Address: 02:00:00:12:34:44" \
   -H "X-Device-Secret: demo-secret" \
   -d '{
     "localIp": "192.168.20.44",

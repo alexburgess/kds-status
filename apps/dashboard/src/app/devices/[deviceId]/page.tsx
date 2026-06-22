@@ -46,8 +46,12 @@ export default async function DeviceDetailPage({
               <dd>{detail.latestReport?.localIp ?? "Unknown"}</dd>
             </div>
             <div>
-              <dt>MAC Address</dt>
+              <dt>Reported MAC</dt>
               <dd>{detail.latestReport?.localMacAddress ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Assigned MAC</dt>
+              <dd>{detail.device.macAddress ?? "Not set"}</dd>
             </div>
             <div>
               <dt>Network</dt>

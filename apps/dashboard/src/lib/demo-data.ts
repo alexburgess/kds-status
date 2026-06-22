@@ -7,6 +7,7 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
   {
     id: "9f6a3d5e-30d1-4d0f-a0cf-42ef4b447e12",
     deviceId: "expo-line-01",
+    macAddress: "02:00:00:12:34:44",
     deviceSecretHash: hashDeviceSecret(demoDeviceSecret),
     displayName: "Expo Line 01",
     locationName: "Downtown Kitchen",
@@ -35,6 +36,7 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
   {
     id: "f65f2c54-b5fd-451e-82be-2ec0f9a34e34",
     deviceId: "grill-01",
+    macAddress: "02:00:00:12:34:47",
     deviceSecretHash: hashDeviceSecret("grill-secret"),
     displayName: "Grill 01",
     locationName: "Downtown Kitchen",

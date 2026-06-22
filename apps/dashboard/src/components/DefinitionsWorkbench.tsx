@@ -12,6 +12,7 @@ interface DefinitionDraft {
   locationName: string;
   locationSlug: string;
   deviceId: string;
+  deviceMacAddress: string;
   deviceSecret: string;
   displayName: string;
   role: string;
@@ -123,6 +124,14 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
               <input value={draft.deviceId} onChange={(event) => update("deviceId", event.target.value)} />
             </label>
             <label>
+              KDS MAC address
+              <input
+                placeholder="02:00:00:12:34:44"
+                value={draft.deviceMacAddress}
+                onChange={(event) => update("deviceMacAddress", event.target.value)}
+              />
+            </label>
+            <label>
               Device secret
               <span className="inline-control">
                 <input value={draft.deviceSecret} onChange={(event) => update("deviceSecret", event.target.value)} />
@@ -220,6 +229,7 @@ function createDefaultDraft(): DefinitionDraft {
     locationName: "Downtown Kitchen",
     locationSlug: "downtown-kitchen",
     deviceId: "prep-line-01",
+    deviceMacAddress: "",
     deviceSecret: "generate-after-page-load",
     displayName: "Prep Line 01",
     role: "Station screen",
@@ -263,6 +273,7 @@ on conflict (slug) do update set
 insert into public.devices (
   location_id,
   device_id,
+  mac_address,
   device_secret_hash,
   display_name,
   role,
@@ -274,6 +285,7 @@ insert into public.devices (
 select
   locations.id,
   ${sqlString(draft.deviceId)},
+  ${sqlNullable(normalizeMacForSql(draft.deviceMacAddress))},
   encode(digest(${sqlString(draft.deviceSecret)}, 'sha256'), 'hex'),
   ${sqlString(draft.displayName)},
   ${sqlString(draft.role)},
@@ -285,6 +297,7 @@ from public.locations
 where slug = ${locationSlug}
 on conflict (device_id) do update set
   location_id = excluded.location_id,
+  mac_address = excluded.mac_address,
   device_secret_hash = excluded.device_secret_hash,
   display_name = excluded.display_name,
   role = excluded.role,
@@ -309,6 +322,10 @@ function sqlString(value: string) {
 
 function sqlNullable(value: string) {
   return value.trim() ? sqlString(value.trim()) : "null";
+}
+
+function normalizeMacForSql(value: string) {
+  return value.trim().toLowerCase().replaceAll("-", ":");
 }
 
 function generateSecret() {

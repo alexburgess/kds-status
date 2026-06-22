@@ -20,7 +20,6 @@ object AppConfigParser {
         val apiBaseUrl = values[API_BASE_URL].orEmpty().trim().trimEnd('/')
 
         val missing = buildList {
-            if (deviceId.isBlank()) add(DEVICE_ID)
             if (deviceSecret.isBlank()) add(DEVICE_SECRET)
             if (apiBaseUrl.isBlank()) add(API_BASE_URL)
         }

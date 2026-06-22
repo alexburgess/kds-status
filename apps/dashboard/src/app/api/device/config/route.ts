@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Missing device credentials" }, { status: 401 });
   }
 
-  const device = await authenticateDevice(credentials.deviceId, credentials.deviceSecret);
+  const device = await authenticateDevice(credentials);
 
   if (!device) {
     return Response.json({ error: "Invalid device credentials" }, { status: 401 });

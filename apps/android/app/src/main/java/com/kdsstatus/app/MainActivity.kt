@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kdsstatus.app.data.AppConfig
+import com.kdsstatus.app.data.DeviceConfigCache
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.ExpectedSetting
 import com.kdsstatus.app.data.InternetCheckPayload
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val configRepository = ManagedConfigRepository(this)
+        val configCache = DeviceConfigCache(this)
         val diagnostics = NetworkDiagnostics(this)
 
         setContent {
@@ -66,6 +68,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF6F8FB)) {
                     KdsStatusApp(
                         readConfig = configRepository::readConfig,
+                        configCache = configCache,
                         diagnostics = diagnostics
                     )
                 }
@@ -77,6 +80,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun KdsStatusApp(
     readConfig: () -> AppConfig,
+    configCache: DeviceConfigCache,
     diagnostics: NetworkDiagnostics
 ) {
     var state by remember { mutableStateOf<ScreenState>(ScreenState.Loading) }
@@ -88,12 +92,32 @@ private fun KdsStatusApp(
             return
         }
 
-        val api = DeviceApiClient(appConfig)
-        val remoteConfig = api.fetchConfig().getOrElse { error ->
-            state = ScreenState.Error("Could not fetch device config: ${error.message.orEmpty()}")
+        val deviceMacAddress = diagnostics.readLocalMacAddress()
+        if (appConfig.deviceId.isBlank() && deviceMacAddress.isNullOrBlank()) {
+            state = ScreenState.MissingConfig(
+                appConfig.copy(missingKeys = appConfig.missingKeys + "device_id or readable Ethernet MAC address")
+            )
             return
         }
 
+        val api = DeviceApiClient(appConfig, deviceMacAddress)
+        val fetchedConfig = api.fetchConfig()
+        val cachedConfig = if (fetchedConfig.isSuccess) {
+            configCache.save(fetchedConfig.getOrThrow())
+        } else {
+            configCache.read()
+        }
+
+        if (cachedConfig == null) {
+            val message = fetchedConfig.exceptionOrNull()?.message.orEmpty()
+            state = ScreenState.Error("Could not fetch device config and no cached config is available: $message")
+            return
+        }
+
+        val remoteConfig = cachedConfig.config
+        val configWarning = fetchedConfig.exceptionOrNull()?.message?.let { error ->
+            "Using cached configuration because the dashboard could not be reached: $error"
+        }
         val report = diagnostics.run(remoteConfig)
         val postError = api.postStatus(report).exceptionOrNull()
 
@@ -101,7 +125,10 @@ private fun KdsStatusApp(
             appConfig = appConfig,
             remoteConfig = remoteConfig,
             report = report,
-            postError = postError?.message
+            postError = postError?.message,
+            configCollectedAtMillis = cachedConfig.collectedAtMillis,
+            isUsingCachedConfig = fetchedConfig.isFailure,
+            configWarning = configWarning
         )
     }
 
@@ -123,7 +150,10 @@ private fun KdsStatusApp(
                 ),
                 remoteConfig = previewDeviceConfig(),
                 report = previewStatusReport(),
-                postError = "Preview only. No dashboard upload was attempted."
+                postError = "Preview only. No dashboard upload was attempted.",
+                configCollectedAtMillis = System.currentTimeMillis(),
+                isUsingCachedConfig = false,
+                configWarning = null
             )
         }
     )
@@ -177,7 +207,7 @@ private fun MissingConfigCard(config: AppConfig, onPreview: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(StatusFormatter.missingConfigMessage(config.missingKeys), color = Color(0xFFB42318))
         Spacer(Modifier.height(8.dp))
-        Text("Set device_id, device_secret, and api_base_url in Miradore managed app configuration.")
+        Text("Set device_secret and api_base_url in Miradore. device_id is optional when Ethernet MAC is available.")
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onPreview,
@@ -204,7 +234,14 @@ private fun ErrorCard(message: String, onRefresh: () -> Unit) {
 
 @Composable
 private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
-    HeaderCard(state.remoteConfig, state.report, state.postError)
+    HeaderCard(
+        config = state.remoteConfig,
+        report = state.report,
+        postError = state.postError,
+        configCollectedAtMillis = state.configCollectedAtMillis,
+        isUsingCachedConfig = state.isUsingCachedConfig,
+        configWarning = state.configWarning
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -235,7 +272,14 @@ private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun HeaderCard(config: DeviceConfigResponse, report: StatusReportPayload, postError: String?) {
+private fun HeaderCard(
+    config: DeviceConfigResponse,
+    report: StatusReportPayload,
+    postError: String?,
+    configCollectedAtMillis: Long,
+    isUsingCachedConfig: Boolean,
+    configWarning: String?
+) {
     StatusCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -252,6 +296,13 @@ private fun HeaderCard(config: DeviceConfigResponse, report: StatusReportPayload
                 modifier = Modifier.weight(1.6f)
             )
             StatusRow("App version", report.appVersion, modifier = Modifier.weight(0.9f))
+        }
+        StatusRow(
+            "Configuration",
+            "${if (isUsingCachedConfig) "Cached" else "Collected"} ${StatusFormatter.configCollectedAt(configCollectedAtMillis)}"
+        )
+        configWarning?.let { warning ->
+            Text(warning, color = Color(0xFF9A620B), fontSize = 13.sp)
         }
         if (config.notes.isNotBlank()) {
             Text(config.notes, color = Color(0xFF263847))
@@ -511,6 +562,9 @@ private sealed interface ScreenState {
         val appConfig: AppConfig,
         val remoteConfig: DeviceConfigResponse,
         val report: StatusReportPayload,
-        val postError: String?
+        val postError: String?,
+        val configCollectedAtMillis: Long,
+        val isUsingCachedConfig: Boolean,
+        val configWarning: String?
     ) : ScreenState
 }

@@ -20,6 +20,7 @@ export interface PrinterDefinition {
 export interface DeviceDefinition {
   id: string;
   deviceId: string;
+  macAddress?: string;
   displayName: string;
   locationName: string;
   role: string;

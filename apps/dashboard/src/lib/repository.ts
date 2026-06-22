@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { demoDevices } from "./demo-data";
 import { addDemoReport, getDemoReports } from "./demo-store";
-import { verifyDeviceSecret } from "./device-auth";
+import { normalizeMacAddress, verifyDeviceSecret } from "./device-auth";
 import { lookupPlayStoreVersion } from "./play-store-version";
 import { createSupabaseServiceClient, isSupabaseConfigured } from "./supabase";
 import { summarizeDeviceStatus } from "./status";
@@ -17,6 +17,7 @@ import type { DeviceStatusPayload } from "./validation";
 interface DeviceRow {
   id: string;
   device_id: string;
+  mac_address: string | null;
   device_secret_hash: string;
   display_name: string;
   location_name?: string;
@@ -165,10 +166,20 @@ export async function getDeviceDetail(deviceId: string): Promise<DeviceDetail | 
   };
 }
 
-export async function authenticateDevice(deviceId: string, deviceSecret: string) {
+export async function authenticateDevice(credentials: {
+  deviceId?: string;
+  deviceMacAddress?: string;
+  deviceSecret: string;
+}) {
   if (!isSupabaseConfigured()) {
-    const device = demoDevices.find((item) => item.deviceId === deviceId);
-    if (!device || !verifyDeviceSecret(deviceSecret, device.deviceSecretHash)) {
+    let device = credentials.deviceMacAddress
+      ? demoDevices.find((item) => normalizeMacAddress(item.macAddress) === credentials.deviceMacAddress)
+      : undefined;
+    if (!device && credentials.deviceId) {
+      device = demoDevices.find((item) => item.deviceId === credentials.deviceId);
+    }
+
+    if (!device || !verifyDeviceSecret(credentials.deviceSecret, device.deviceSecretHash)) {
       return null;
     }
 
@@ -180,19 +191,40 @@ export async function authenticateDevice(deviceId: string, deviceSecret: string)
     throw new Error("Supabase is marked configured but client creation failed.");
   }
 
-  const result = await supabase
-    .from("device_definitions")
-    .select("*, printers(*)")
-    .eq("device_id", deviceId)
-    .eq("active", true)
-    .single();
+  const select = "*, printers(*)";
+  let row: DeviceRow | null = null;
 
-  if (result.error || !result.data) {
-    return null;
+  if (credentials.deviceMacAddress) {
+    const result = await supabase
+      .from("device_definitions")
+      .select(select)
+      .eq("mac_address", credentials.deviceMacAddress)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    row = result.data as DeviceRow | null;
   }
 
-  const row = result.data as DeviceRow;
-  if (!verifyDeviceSecret(deviceSecret, row.device_secret_hash)) {
+  if (!row && credentials.deviceId) {
+    const result = await supabase
+      .from("device_definitions")
+      .select(select)
+      .eq("device_id", credentials.deviceId)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    row = result.data as DeviceRow | null;
+  }
+
+  if (!row || !verifyDeviceSecret(credentials.deviceSecret, row.device_secret_hash)) {
     return null;
   }
 
@@ -281,6 +313,7 @@ function mapDeviceRow(row: DeviceRow): DeviceDefinition {
   return {
     id: row.id,
     deviceId: row.device_id,
+    macAddress: row.mac_address ?? undefined,
     displayName: row.display_name,
     locationName: row.location_name ?? "Unassigned",
     role: row.role,
@@ -328,6 +361,7 @@ function stripSecret(device: DeviceDefinition & { deviceSecretHash?: string }): 
   return {
     id: device.id,
     deviceId: device.deviceId,
+    macAddress: device.macAddress,
     displayName: device.displayName,
     locationName: device.locationName,
     role: device.role,

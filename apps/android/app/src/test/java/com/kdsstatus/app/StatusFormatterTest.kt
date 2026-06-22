@@ -2,6 +2,7 @@ package com.kdsstatus.app
 
 import com.kdsstatus.app.ui.StatusFormatter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatusFormatterTest {
@@ -18,6 +19,11 @@ class StatusFormatterTest {
             "Missing managed configuration: device_secret, api_base_url",
             StatusFormatter.missingConfigMessage(listOf("device_secret", "api_base_url"))
         )
+    }
+
+    @Test
+    fun formatsConfigCollectedAt() {
+        assertTrue(StatusFormatter.configCollectedAt(1_782_000_000_000).isNotBlank())
     }
 
     @Test
