@@ -6,14 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,9 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -371,7 +367,7 @@ private fun ConfigurationWorkspace(
     report: StatusReportPayload,
     modifier: Modifier = Modifier
 ) {
-    val pages = remember(config.expectedSettings, config.printers) {
+    val pages = remember(config.expectedSettings, config.printers, config.role) {
         buildConfigurationPages(config)
     }
     var selectedPageIndex by remember { mutableStateOf(0) }
@@ -413,18 +409,7 @@ private fun ConfigurationWorkspace(
             }
         }
 
-        Image(
-            painter = painterResource(selectedPage.imageRes),
-            contentDescription = "${selectedPage.title} Square KDS settings screenshot",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(selectedPage.aspectRatio)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color.White)
-        )
-
-        ConfigurationDetails(page = selectedPage, report = report)
+        ConfigurationPageContent(selectedPage, report)
     }
 }
 
@@ -575,61 +560,93 @@ private fun ConnectivityCard(
 }
 
 @Composable
-private fun ConfigurationDetails(page: ConfigurationPageSpec, report: StatusReportPayload) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+private fun ConfigurationPageContent(page: ConfigurationPageSpec, report: StatusReportPayload) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Configuration for this page:", color = Color(0xFF1F1F1F), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        if (page.settings.isEmpty()) {
-            AssistChip(
-                onClick = {},
-                label = { Text("No supplied configuration details") },
-                shape = CircleShape,
-                colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFEDEDED)),
-                border = null
-            )
-        } else {
-            page.settings.forEach { setting ->
-                ConfigurationChoiceRow(setting)
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(page.title, color = Color(0xFF111111), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Expected Square KDS settings for this tablet.", color = Color(0xFF6F6F6F), fontSize = 13.sp)
             }
-        }
-        report.squareKds.error?.let { error ->
-            Text(error, color = Color(0xFF9A620B), fontSize = 12.sp)
+
+            page.groups.forEach { group ->
+                ConfigurationGroupCard(group)
+            }
+
+            if (page.title == "General") {
+                report.squareKds.error?.let { error ->
+                    Text(error, color = Color(0xFF9A620B), fontSize = 12.sp)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ConfigurationChoiceRow(setting: ExpectedSetting) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(setting.setting, color = Color(0xFF3C4043), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+private fun ConfigurationGroupCard(group: ConfigurationGroupSpec) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF7F7F7), RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        group.title?.let { title ->
+            Text(title, color = Color(0xFF1F1F1F), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+        group.items.forEach { item ->
+            ConfigurationItemRow(item)
+        }
+    }
+}
+
+@Composable
+private fun ConfigurationItemRow(item: ConfigurationItemSpec) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            item.label,
+            color = Color(0xFF2A2A2A),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier
+                .weight(1.45f)
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val options = optionsForSetting(setting)
-            if (options.isEmpty()) {
+            if (item.options.isEmpty()) {
                 AssistChip(
                     onClick = {},
-                    label = { Text(setting.expected) },
+                    label = { Text(item.expected, fontWeight = FontWeight.SemiBold) },
                     shape = CircleShape,
-                    colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFEDEDED)),
+                    colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFE8E8E8)),
                     border = null
                 )
             } else {
-                options.forEach { option ->
-                    val selected = isOptionSelected(option, setting.expected)
+                item.options.forEach { option ->
                     FilterChip(
-                        selected = selected,
+                        selected = option.equals(item.expected, ignoreCase = true),
                         onClick = {},
-                        label = { Text(option, fontWeight = FontWeight.SemiBold) },
+                        label = { Text(option, fontWeight = FontWeight.SemiBold, maxLines = 1) },
                         shape = CircleShape,
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFF222222),
                             selectedLabelColor = Color.White,
-                            containerColor = Color(0xFFEDEDED),
-                            labelColor = Color(0xFF6F6F6F)
+                            containerColor = Color(0xFFE8E8E8),
+                            labelColor = Color(0xFF606060)
                         ),
                         border = null
                     )
@@ -822,91 +839,218 @@ private fun StatusDot(ok: Boolean?) {
 
 private data class ConfigurationPageSpec(
     val title: String,
-    val imageRes: Int,
-    val aspectRatio: Float,
-    val settings: List<ExpectedSetting>
+    val groups: List<ConfigurationGroupSpec>
+)
+
+private data class ConfigurationGroupSpec(
+    val title: String? = null,
+    val items: List<ConfigurationItemSpec>
+)
+
+private data class ConfigurationItemSpec(
+    val label: String,
+    val expected: String,
+    val options: List<String> = emptyList()
 )
 
 private fun buildConfigurationPages(config: DeviceConfigResponse): List<ConfigurationPageSpec> {
     val settings = config.expectedSettings
-    val generalSettings = settings.settingsForKeywords("general", "display")
-        .ifEmpty {
-            listOf(
-                ExpectedSetting("General", "Display name", config.displayName),
-                ExpectedSetting("General", "Display type", displayTypeForRole(config.role))
-            )
-        }
-
     return listOf(
         ConfigurationPageSpec(
             title = "General",
-            imageRes = R.drawable.kds_settings_general,
-            aspectRatio = 2960f / 1848f,
-            settings = generalSettings
-        ),
-        ConfigurationPageSpec(
-            title = "Items & categories",
-            imageRes = R.drawable.kds_settings_items_categories,
-            aspectRatio = 2960f / 2256f,
-            settings = settings.settingsForKeywords("item", "category", "categories")
-        ),
-        ConfigurationPageSpec(
-            title = "Printers",
-            imageRes = R.drawable.kds_settings_printers,
-            aspectRatio = 2960f / 3436f,
-            settings = settings.settingsForKeywords("printer").ifEmpty {
-                config.printers.flatMap { printer ->
-                    listOf(
-                        ExpectedSetting("Printers", "${printer.name} IP", "${printer.host}:${printer.port}"),
-                        ExpectedSetting("Printers", "${printer.name} MAC", printer.macAddress ?: "Unavailable")
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "Display Type",
+                            expected = settings.expectedSetting("Display Type", displayTypeForRole(config.role), "general"),
+                            options = displayTypeOptions
+                        )
                     )
-                }
-            }
+                )
+            )
         ),
         ConfigurationPageSpec(
-            title = "Source & Fulfilment",
-            imageRes = R.drawable.kds_settings_source_fulfilment,
-            aspectRatio = 2960f / 2212f,
-            settings = settings.settingsForKeywords("source", "fulfil", "fulfill")
+            title = "Source and Fulfilment",
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    title = "Order sources",
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "View point of sale orders",
+                            expected = settings.expectedSetting("View point of sale orders", "On", "source"),
+                            options = onOffOptions
+                        ),
+                        ConfigurationItemSpec(
+                            label = "View online, kiosk, and delayed fulfillment orders",
+                            expected = settings.expectedSetting(
+                                "View online, kiosk, and delayed fulfillment orders",
+                                "On",
+                                "source"
+                            ),
+                            options = onOffOptions
+                        )
+                    )
+                ),
+                ConfigurationGroupSpec(
+                    title = "Order timing",
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "Show orders",
+                            expected = settings.expectedSetting(
+                                "Show orders",
+                                "Show orders when they're placed",
+                                "source"
+                            ),
+                            options = sourceTimingOptions
+                        )
+                    )
+                )
+            )
+        ),
+        ConfigurationPageSpec(
+            title = "Items & Categories",
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "Include future kitchen routing categories",
+                            expected = settings.expectedSetting("Include future kitchen routing categories", "Off", "items", "categories"),
+                            options = onOffOptions
+                        )
+                    )
+                ),
+                ConfigurationGroupSpec(
+                    title = "Kitchen routing categories",
+                    items = kitchenRoutingCategories.map { category ->
+                        ConfigurationItemSpec(
+                            label = category,
+                            expected = settings.expectedSetting(category, "Off", "items", "categories", "routing"),
+                            options = onOffOptions
+                        )
+                    }
+                )
+            )
         ),
         ConfigurationPageSpec(
             title = "Tickets",
-            imageRes = R.drawable.kds_settings_tickets,
-            aspectRatio = 2960f / 1848f,
-            settings = settings.settingsForKeywords("ticket", "coursing", "timer", "alert")
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "Complete tickets",
+                            expected = settings.expectedSetting("Complete tickets", "Complete on all devices", "ticket"),
+                            options = ticketCompletionOptions
+                        ),
+                        ConfigurationItemSpec(
+                            label = "Staggered item prep times",
+                            expected = settings.expectedSetting("Staggered item prep times", "Off", "ticket"),
+                            options = onOffOptions
+                        )
+                    )
+                )
+            )
+        ),
+        ConfigurationPageSpec(
+            title = "Coursing",
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    items = listOf(
+                        ConfigurationItemSpec(
+                            label = "Course visibility",
+                            expected = settings.expectedSetting("Course visibility", "Show fired and held courses", "coursing"),
+                            options = coursingOptions
+                        )
+                    )
+                )
+            )
+        ),
+        ConfigurationPageSpec(
+            title = "Printers",
+            groups = listOf(
+                ConfigurationGroupSpec(
+                    title = "Attached printer",
+                    items = printerConfigurationItems(config, settings)
+                )
+            )
         )
     )
 }
 
-private fun List<ExpectedSetting>.settingsForKeywords(vararg keywords: String): List<ExpectedSetting> =
-    filter { setting ->
-        val searchable = "${setting.section} ${setting.setting}".lowercase()
-        keywords.any { keyword -> searchable.contains(keyword.lowercase()) }
+private val displayTypeOptions = listOf("Expeditor", "Prep")
+private val onOffOptions = listOf("On", "Off")
+private val yesNoOptions = listOf("Yes", "No")
+private val sourceTimingOptions = listOf(
+    "Show orders when they're placed",
+    "Show orders when marked in progress",
+    "Show orders based on pickup time"
+)
+private val ticketCompletionOptions = listOf(
+    "Complete on all devices",
+    "Complete only on this device"
+)
+private val coursingOptions = listOf(
+    "Show fired and held courses",
+    "Only show fired courses"
+)
+private val kitchenRoutingCategories = listOf(
+    "HB Pergola Wine",
+    "HBK Charcuterie",
+    "HBK Cold Line",
+    "HBK Expo",
+    "HBK Hot Line",
+    "HBK Pizza Line",
+    "TVTR Cold Line",
+    "TVTR Expo",
+    "TVTR Hot Line",
+    "TVTR Pizza Line",
+    "TVTR Wine Expos"
+)
+
+private fun printerConfigurationItems(
+    config: DeviceConfigResponse,
+    settings: List<ExpectedSetting>
+): List<ConfigurationItemSpec> {
+    val printer = config.printers.firstOrNull()
+    val hasPrinter = if (printer == null) "No" else "Yes"
+    return listOf(
+        ConfigurationItemSpec("Does it have an attached printer", hasPrinter, yesNoOptions),
+        ConfigurationItemSpec("Printer name", printer?.name ?: "Not configured"),
+        ConfigurationItemSpec("Printer MAC Address", printer?.macAddress ?: "Not configured"),
+        ConfigurationItemSpec("Printer IP Address", printer?.host ?: "Not configured"),
+        ConfigurationItemSpec(
+            "Printer Profile name",
+            settings.expectedSetting("Printer Profile name", printer?.description ?: "Not configured", "printer")
+        )
+    )
+}
+
+private fun List<ExpectedSetting>.expectedSetting(
+    settingName: String,
+    fallback: String,
+    vararg sectionKeywords: String
+): String {
+    val normalizedSettingName = settingName.normalizedSettingKey()
+    val sectionMatched = firstOrNull { setting ->
+        setting.setting.normalizedSettingKey() == normalizedSettingName &&
+            sectionKeywords.any { keyword -> setting.section.contains(keyword, ignoreCase = true) }
     }
+    if (sectionMatched != null) {
+        return sectionMatched.expected
+    }
+
+    return firstOrNull { setting -> setting.setting.normalizedSettingKey() == normalizedSettingName }?.expected
+        ?: fallback
+}
+
+private fun String.normalizedSettingKey(): String =
+    lowercase()
+        .replace("&", "and")
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
 
 private fun displayTypeForRole(role: String): String =
     if (role.contains("prep", ignoreCase = true)) "Prep" else "Expeditor"
-
-private fun optionsForSetting(setting: ExpectedSetting): List<String> {
-    val settingName = setting.setting.lowercase()
-    val expected = setting.expected.trim()
-
-    return when {
-        settingName.contains("display type") -> listOf("Expeditor", "Prep")
-        expected.equals("on", ignoreCase = true) || expected.equals("off", ignoreCase = true) -> listOf("On", "Off")
-        expected.equals("enabled", ignoreCase = true) || expected.equals("disabled", ignoreCase = true) -> {
-            listOf("Enabled", "Disabled")
-        }
-        expected.equals("yes", ignoreCase = true) || expected.equals("no", ignoreCase = true) -> listOf("Yes", "No")
-        expected.contains(",") -> expected.split(",").map { item -> item.trim() }.filter { item -> item.isNotBlank() }
-        else -> emptyList()
-    }
-}
-
-private fun isOptionSelected(option: String, expected: String): Boolean {
-    val expectedOptions = expected.split(",").map { item -> item.trim() }
-    return expectedOptions.any { item -> item.equals(option, ignoreCase = true) }
-}
 
 private fun squareKdsVersionPill(report: StatusReportPayload): String {
     val installedVersion = report.squareKds.installedVersion ?: "Unknown"
@@ -954,12 +1098,26 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
         versionSource = "play-store"
     ),
     expectedSettings = listOf(
-        ExpectedSetting("General", "Display type", "Expeditor"),
-        ExpectedSetting("Kitchen Routing", "Routing mode", "Expo controls entire order"),
-        ExpectedSetting("Kitchen Routing", "Station filter", "All items"),
-        ExpectedSetting("Sources", "Accepted sources", "POS, Online, Delivery"),
-        ExpectedSetting("Sources", "Order visibility", "All open tickets"),
-        ExpectedSetting("Tickets", "No open tickets", "Enabled")
+        ExpectedSetting("General", "Display Type", "Expeditor"),
+        ExpectedSetting("Source & Fulfilment", "View point of sale orders", "On"),
+        ExpectedSetting("Source & Fulfilment", "View online, kiosk, and delayed fulfillment orders", "On"),
+        ExpectedSetting("Source & Fulfilment", "Show orders", "Show orders when they're placed"),
+        ExpectedSetting("Items & Categories", "Include future kitchen routing categories", "Off"),
+        ExpectedSetting("Items & Categories", "HB Pergola Wine", "On"),
+        ExpectedSetting("Items & Categories", "HBK Charcuterie", "On"),
+        ExpectedSetting("Items & Categories", "HBK Cold Line", "Off"),
+        ExpectedSetting("Items & Categories", "HBK Expo", "On"),
+        ExpectedSetting("Items & Categories", "HBK Hot Line", "On"),
+        ExpectedSetting("Items & Categories", "HBK Pizza Line", "Off"),
+        ExpectedSetting("Items & Categories", "TVTR Cold Line", "Off"),
+        ExpectedSetting("Items & Categories", "TVTR Expo", "Off"),
+        ExpectedSetting("Items & Categories", "TVTR Hot Line", "Off"),
+        ExpectedSetting("Items & Categories", "TVTR Pizza Line", "Off"),
+        ExpectedSetting("Items & Categories", "TVTR Wine Expos", "Off"),
+        ExpectedSetting("Tickets", "Complete tickets", "Complete only on this device"),
+        ExpectedSetting("Tickets", "Staggered item prep times", "Off"),
+        ExpectedSetting("Coursing", "Course visibility", "Show fired and held courses"),
+        ExpectedSetting("Printers", "Printer Profile name", "Expo Printer")
     ),
     printers = listOf(
         PrinterTarget(
@@ -967,7 +1125,8 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
             name = "Hot line printer",
             host = "192.168.20.61",
             port = 9100,
-            macAddress = "00:11:32:aa:bb:61"
+            macAddress = "00:11:32:aa:bb:61",
+            description = "Expo Printer"
         )
     )
 )

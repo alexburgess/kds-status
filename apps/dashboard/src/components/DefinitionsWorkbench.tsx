@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { DashboardSnapshot } from "@/lib/types";
+import type { DashboardSnapshot, ExpectedSetting } from "@/lib/types";
 
 interface DefinitionsWorkbenchProps {
   snapshot: DashboardSnapshot;
@@ -18,18 +18,60 @@ interface DefinitionDraft {
   role: string;
   notes: string;
   squareKdsPackageName: string;
+  displayType: string;
+  viewPointOfSaleOrders: boolean;
+  viewOnlineKioskDelayedOrders: boolean;
+  sourceOrderTiming: string;
+  includeFutureKitchenRoutingCategories: boolean;
+  kitchenRoutingCategories: Record<string, boolean>;
+  ticketCompletion: string;
+  staggeredItemPrepTimes: boolean;
+  coursingVisibility: string;
+  hasAttachedPrinter: boolean;
   printerName: string;
   printerHost: string;
   printerPort: string;
   printerMacAddress: string;
-  expectedSettingsJson: string;
+  printerProfileName: string;
 }
 
-const defaultSettings = [
-  { section: "Kitchen Routing", setting: "Routing mode", expected: "Expo controls entire order" },
-  { section: "Kitchen Routing", setting: "Station filter", expected: "All items" },
-  { section: "Sources", setting: "Accepted sources", expected: "POS, Online, Delivery" },
-  { section: "Sources", setting: "Order visibility", expected: "All open tickets" }
+const kitchenRoutingCategories = [
+  "HB Pergola Wine",
+  "HBK Charcuterie",
+  "HBK Cold Line",
+  "HBK Expo",
+  "HBK Hot Line",
+  "HBK Pizza Line",
+  "TVTR Cold Line",
+  "TVTR Expo",
+  "TVTR Hot Line",
+  "TVTR Pizza Line",
+  "TVTR Wine Expos"
+];
+
+const displayTypeOptions = ["Expeditor", "Prep"];
+const sourceTimingOptions = [
+  "Show orders when they're placed",
+  "Show orders when marked in progress",
+  "Show orders based on pickup time"
+];
+const ticketCompletionOptions = ["Complete on all devices", "Complete only on this device"];
+const coursingOptions = ["Show fired and held courses", "Only show fired courses"];
+
+const defaultKitchenRoutingCategories = Object.fromEntries(
+  kitchenRoutingCategories.map((category) => [
+    category,
+    ["HBK Charcuterie", "HBK Expo", "HBK Hot Line"].includes(category)
+  ])
+) as Record<string, boolean>;
+
+const sectionNames = [
+  "GENERAL",
+  "SOURCE & FULFILMENT",
+  "ITEMS & CATEGORIES",
+  "TICKETS",
+  "COURSING",
+  "PRINTERS"
 ];
 
 export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
@@ -52,6 +94,16 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
 
   function regenerateSecret() {
     update("deviceSecret", generateSecret());
+  }
+
+  function updateKitchenRoutingCategory(category: string, enabled: boolean) {
+    setDraft((current) => ({
+      ...current,
+      kitchenRoutingCategories: {
+        ...current.kitchenRoutingCategories,
+        [category]: enabled
+      }
+    }));
   }
 
   return (
@@ -157,42 +209,59 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
               />
             </label>
             <p className="form-note">The available version is retrieved automatically from Google Play.</p>
+            <div className="settings-form-block">
+              <span>KDS settings</span>
+              <p className="form-note">These values generate the expected setup shown on the tablet.</p>
+              <KdsSettingsControls
+                draft={draft}
+                update={update}
+                updateKitchenRoutingCategory={updateKitchenRoutingCategory}
+              />
+            </div>
             <div className="form-subsection">
               <span>Printer target</span>
+              <CheckboxField
+                label="Does it have an attached printer"
+                checked={draft.hasAttachedPrinter}
+                onChange={(checked) => update("hasAttachedPrinter", checked)}
+              />
               <div className="definition-row printer-target-row">
                 <input
                   aria-label="Printer name"
                   placeholder="Printer name"
+                  disabled={!draft.hasAttachedPrinter}
                   value={draft.printerName}
                   onChange={(event) => update("printerName", event.target.value)}
                 />
                 <input
                   aria-label="Printer host"
                   placeholder="192.168.20.61"
+                  disabled={!draft.hasAttachedPrinter}
                   value={draft.printerHost}
                   onChange={(event) => update("printerHost", event.target.value)}
                 />
+                <input
+                  aria-label="Printer port"
+                  disabled={!draft.hasAttachedPrinter}
+                  value={draft.printerPort}
+                  onChange={(event) => update("printerPort", event.target.value)}
+                />
+                <input
+                  aria-label="Printer MAC"
+                  placeholder="00:11:32:aa:bb:61"
+                  disabled={!draft.hasAttachedPrinter}
+                  value={draft.printerMacAddress}
+                  onChange={(event) => update("printerMacAddress", event.target.value)}
+                />
+              </div>
               <input
-                aria-label="Printer port"
-                value={draft.printerPort}
-                onChange={(event) => update("printerPort", event.target.value)}
-              />
-              <input
-                aria-label="Printer MAC"
-                placeholder="00:11:32:aa:bb:61"
-                value={draft.printerMacAddress}
-                onChange={(event) => update("printerMacAddress", event.target.value)}
+                aria-label="Printer profile name"
+                disabled={!draft.hasAttachedPrinter}
+                placeholder="Printer profile name"
+                value={draft.printerProfileName}
+                onChange={(event) => update("printerProfileName", event.target.value)}
               />
             </div>
-          </div>
-            <label>
-              Expected settings JSON
-              <textarea
-                className="code-textarea"
-                value={draft.expectedSettingsJson}
-                onChange={(event) => update("expectedSettingsJson", event.target.value)}
-              />
-            </label>
           </form>
 
           <div className="generated-output">
@@ -202,6 +271,143 @@ export function DefinitionsWorkbench({ snapshot }: DefinitionsWorkbenchProps) {
         </div>
       </section>
     </main>
+  );
+}
+
+function KdsSettingsControls({
+  draft,
+  update,
+  updateKitchenRoutingCategory
+}: {
+  draft: DefinitionDraft;
+  update: <K extends keyof DefinitionDraft>(key: K, value: DefinitionDraft[K]) => void;
+  updateKitchenRoutingCategory: (category: string, enabled: boolean) => void;
+}) {
+  return (
+    <div className="kds-settings-grid">
+      <fieldset className="settings-fieldset">
+        <legend>General</legend>
+        <SelectField
+          label="Display Type"
+          value={draft.displayType}
+          options={displayTypeOptions}
+          onChange={(value) => update("displayType", value)}
+        />
+      </fieldset>
+
+      <fieldset className="settings-fieldset">
+        <legend>Source & Fulfilment</legend>
+        <CheckboxField
+          label="View point of sale orders"
+          checked={draft.viewPointOfSaleOrders}
+          onChange={(checked) => update("viewPointOfSaleOrders", checked)}
+        />
+        <CheckboxField
+          label="View online, kiosk, and delayed fulfillment orders"
+          checked={draft.viewOnlineKioskDelayedOrders}
+          onChange={(checked) => update("viewOnlineKioskDelayedOrders", checked)}
+        />
+        <SelectField
+          label="Show orders"
+          value={draft.sourceOrderTiming}
+          options={sourceTimingOptions}
+          onChange={(value) => update("sourceOrderTiming", value)}
+        />
+      </fieldset>
+
+      <fieldset className="settings-fieldset wide">
+        <legend>Items & Categories</legend>
+        <CheckboxField
+          label="Include future kitchen routing categories"
+          checked={draft.includeFutureKitchenRoutingCategories}
+          onChange={(checked) => update("includeFutureKitchenRoutingCategories", checked)}
+        />
+        <span className="subtle-label">Kitchen routing categories</span>
+        <div className="checkbox-grid">
+          {kitchenRoutingCategories.map((category) => (
+            <CheckboxField
+              key={category}
+              label={category}
+              checked={draft.kitchenRoutingCategories[category] ?? false}
+              onChange={(checked) => updateKitchenRoutingCategory(category, checked)}
+            />
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="settings-fieldset">
+        <legend>Tickets</legend>
+        <SelectField
+          label="Complete tickets"
+          value={draft.ticketCompletion}
+          options={ticketCompletionOptions}
+          onChange={(value) => update("ticketCompletion", value)}
+        />
+        <CheckboxField
+          label="Staggered item prep times"
+          checked={draft.staggeredItemPrepTimes}
+          onChange={(checked) => update("staggeredItemPrepTimes", checked)}
+        />
+      </fieldset>
+
+      <fieldset className="settings-fieldset">
+        <legend>Coursing</legend>
+        <SelectField
+          label="Course visibility"
+          value={draft.coursingVisibility}
+          options={coursingOptions}
+          onChange={(value) => update("coursingVisibility", value)}
+        />
+      </fieldset>
+
+      <div className="section-chip-list" aria-label="Generated sections">
+        {sectionNames.map((section) => (
+          <span key={section}>{section}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="select-field">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function CheckboxField({
+  label,
+  checked,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="checkbox-field">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -235,11 +441,21 @@ function createDefaultDraft(): DefinitionDraft {
     role: "Station screen",
     notes: "Confirm expected Square KDS settings before service.",
     squareKdsPackageName: "com.squareup.rst.kds",
+    displayType: "Prep",
+    viewPointOfSaleOrders: true,
+    viewOnlineKioskDelayedOrders: true,
+    sourceOrderTiming: "Show orders when they're placed",
+    includeFutureKitchenRoutingCategories: false,
+    kitchenRoutingCategories: defaultKitchenRoutingCategories,
+    ticketCompletion: "Complete only on this device",
+    staggeredItemPrepTimes: false,
+    coursingVisibility: "Show fired and held courses",
+    hasAttachedPrinter: false,
     printerName: "",
     printerHost: "",
     printerPort: "9100",
     printerMacAddress: "",
-    expectedSettingsJson: JSON.stringify(defaultSettings, null, 2)
+    printerProfileName: ""
   };
 }
 
@@ -255,11 +471,11 @@ function buildDefinitionSql(draft: DefinitionDraft) {
   const locationSlug = sqlString(draft.locationSlug);
   const locationName = sqlString(draft.locationName);
   const printerPort = Number.parseInt(draft.printerPort, 10) || 9100;
-  const expectedSettings = normalizeJson(draft.expectedSettingsJson);
-  const printerSql = draft.printerName.trim() && draft.printerHost.trim()
+  const expectedSettings = JSON.stringify(buildExpectedSettings(draft), null, 2);
+  const printerSql = draft.hasAttachedPrinter && draft.printerName.trim() && draft.printerHost.trim()
     ? `
 insert into public.printers (device_id, name, host, port, mac_address, description)
-select id, ${sqlString(draft.printerName)}, ${sqlString(draft.printerHost)}, ${printerPort}, ${sqlNullable(draft.printerMacAddress)}, null
+select id, ${sqlString(draft.printerName)}, ${sqlString(draft.printerHost)}, ${printerPort}, ${sqlNullable(draft.printerMacAddress)}, ${sqlNullable(draft.printerProfileName)}
 from public.devices
 where device_id = ${sqlString(draft.deviceId)};`
     : "";
@@ -308,12 +524,43 @@ on conflict (device_id) do update set
   updated_at = now();${printerSql}`;
 }
 
-function normalizeJson(value: string) {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return JSON.stringify(defaultSettings, null, 2);
-  }
+function buildExpectedSettings(draft: DefinitionDraft): ExpectedSetting[] {
+  return [
+    { section: "General", setting: "Display Type", expected: draft.displayType },
+    {
+      section: "Source & Fulfilment",
+      setting: "View point of sale orders",
+      expected: onOff(draft.viewPointOfSaleOrders)
+    },
+    {
+      section: "Source & Fulfilment",
+      setting: "View online, kiosk, and delayed fulfillment orders",
+      expected: onOff(draft.viewOnlineKioskDelayedOrders)
+    },
+    { section: "Source & Fulfilment", setting: "Show orders", expected: draft.sourceOrderTiming },
+    {
+      section: "Items & Categories",
+      setting: "Include future kitchen routing categories",
+      expected: onOff(draft.includeFutureKitchenRoutingCategories)
+    },
+    ...kitchenRoutingCategories.map((category) => ({
+      section: "Items & Categories",
+      setting: category,
+      expected: onOff(draft.kitchenRoutingCategories[category] ?? false)
+    })),
+    { section: "Tickets", setting: "Complete tickets", expected: draft.ticketCompletion },
+    { section: "Tickets", setting: "Staggered item prep times", expected: onOff(draft.staggeredItemPrepTimes) },
+    { section: "Coursing", setting: "Course visibility", expected: draft.coursingVisibility },
+    {
+      section: "Printers",
+      setting: "Printer Profile name",
+      expected: draft.hasAttachedPrinter && draft.printerProfileName.trim() ? draft.printerProfileName.trim() : "Not configured"
+    }
+  ];
+}
+
+function onOff(value: boolean) {
+  return value ? "On" : "Off";
 }
 
 function sqlString(value: string) {

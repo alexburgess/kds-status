@@ -3,6 +3,42 @@ import type { DeviceDefinition, StatusReport } from "./types";
 
 export const demoDeviceSecret = "demo-secret";
 
+const expoExpectedSettings = [
+  { section: "General", setting: "Display Type", expected: "Expeditor" },
+  { section: "Source & Fulfilment", setting: "View point of sale orders", expected: "On" },
+  { section: "Source & Fulfilment", setting: "View online, kiosk, and delayed fulfillment orders", expected: "On" },
+  { section: "Source & Fulfilment", setting: "Show orders", expected: "Show orders when they're placed" },
+  { section: "Items & Categories", setting: "Include future kitchen routing categories", expected: "Off" },
+  { section: "Items & Categories", setting: "HB Pergola Wine", expected: "On" },
+  { section: "Items & Categories", setting: "HBK Charcuterie", expected: "On" },
+  { section: "Items & Categories", setting: "HBK Cold Line", expected: "Off" },
+  { section: "Items & Categories", setting: "HBK Expo", expected: "On" },
+  { section: "Items & Categories", setting: "HBK Hot Line", expected: "On" },
+  { section: "Items & Categories", setting: "HBK Pizza Line", expected: "Off" },
+  { section: "Items & Categories", setting: "TVTR Cold Line", expected: "Off" },
+  { section: "Items & Categories", setting: "TVTR Expo", expected: "Off" },
+  { section: "Items & Categories", setting: "TVTR Hot Line", expected: "Off" },
+  { section: "Items & Categories", setting: "TVTR Pizza Line", expected: "Off" },
+  { section: "Items & Categories", setting: "TVTR Wine Expos", expected: "Off" },
+  { section: "Tickets", setting: "Complete tickets", expected: "Complete only on this device" },
+  { section: "Tickets", setting: "Staggered item prep times", expected: "Off" },
+  { section: "Coursing", setting: "Course visibility", expected: "Show fired and held courses" },
+  { section: "Printers", setting: "Printer Profile name", expected: "Expo Printer" }
+];
+
+const grillExpectedSettings = [
+  { section: "General", setting: "Display Type", expected: "Prep" },
+  { section: "Source & Fulfilment", setting: "View point of sale orders", expected: "On" },
+  { section: "Source & Fulfilment", setting: "View online, kiosk, and delayed fulfillment orders", expected: "Off" },
+  { section: "Source & Fulfilment", setting: "Show orders", expected: "Show orders when marked in progress" },
+  { section: "Items & Categories", setting: "Include future kitchen routing categories", expected: "Off" },
+  { section: "Items & Categories", setting: "HBK Hot Line", expected: "On" },
+  { section: "Tickets", setting: "Complete tickets", expected: "Complete on all devices" },
+  { section: "Tickets", setting: "Staggered item prep times", expected: "On" },
+  { section: "Coursing", setting: "Course visibility", expected: "Only show fired courses" },
+  { section: "Printers", setting: "Printer Profile name", expected: "Not configured" }
+];
+
 export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }> = [
   {
     id: "9f6a3d5e-30d1-4d0f-a0cf-42ef4b447e12",
@@ -26,12 +62,7 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
         description: "Expo station ticket printer"
       }
     ],
-    expectedSettings: [
-      { section: "Kitchen Routing", setting: "Routing mode", expected: "Expo controls entire order" },
-      { section: "Kitchen Routing", setting: "Station filter", expected: "All items" },
-      { section: "Sources", setting: "Accepted sources", expected: "POS, Online, Delivery" },
-      { section: "Sources", setting: "Order visibility", expected: "All open tickets" }
-    ]
+    expectedSettings: expoExpectedSettings
   },
   {
     id: "f65f2c54-b5fd-451e-82be-2ec0f9a34e34",
@@ -46,11 +77,7 @@ export const demoDevices: Array<DeviceDefinition & { deviceSecretHash: string }>
     squareKdsPackageName: undefined,
     squareKdsExpectedVersion: undefined,
     printers: [],
-    expectedSettings: [
-      { section: "Kitchen Routing", setting: "Station filter", expected: "Grill only" },
-      { section: "Sources", setting: "Accepted sources", expected: "POS and online" },
-      { section: "Hardware", setting: "Printer", expected: "None" }
-    ]
+    expectedSettings: grillExpectedSettings
   }
 ];
 
