@@ -21,9 +21,13 @@ class DeviceApiClient(
     suspend fun fetchConfig(): Result<DeviceConfigResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection("/api/device/config", "GET")
-            connection.inputStream.bufferedReader().use { body ->
-                json.decodeFromString<DeviceConfigResponse>(body.readText())
+            val responseBody = readResponseBody(connection)
+
+            if (connection.responseCode !in 200..299) {
+                error("Config fetch failed: HTTP ${connection.responseCode} $responseBody")
             }
+
+            json.decodeFromString<DeviceConfigResponse>(responseBody)
         }
     }
 
@@ -37,7 +41,7 @@ class DeviceApiClient(
             }
 
             if (connection.responseCode !in 200..299) {
-                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                val errorBody = readErrorBody(connection)
                 error("Status report failed: HTTP ${connection.responseCode} ${errorBody.orEmpty()}")
             }
         }
@@ -58,4 +62,14 @@ class DeviceApiClient(
             setRequestProperty("X-Device-Secret", appConfig.deviceSecret)
         }
     }
+
+    private fun readResponseBody(connection: HttpURLConnection): String =
+        if (connection.responseCode in 200..299) {
+            connection.inputStream.bufferedReader().use { body -> body.readText() }
+        } else {
+            readErrorBody(connection).orEmpty()
+        }
+
+    private fun readErrorBody(connection: HttpURLConnection): String? =
+        connection.errorStream?.bufferedReader()?.use { it.readText() }
 }

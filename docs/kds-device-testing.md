@@ -14,6 +14,7 @@ The real device-side experience is the Android app in `apps/android`.
 3. Deploy it to one test KDS tablet.
 4. In the dashboard, open `/definitions` and add a JSON device whose `macAddress` matches the tablet fixed Ethernet or Wi-Fi MAC address.
 5. Open **KDS Status** on the tablet.
+6. If the tablet says Android did not expose a MAC address, copy the displayed `android-...` device ID into that same JSON device as `deviceId`, save, then reopen **KDS Status**.
 
 No Miradore managed app configuration is required.
 
@@ -37,7 +38,7 @@ The emulator is useful for layout, scrolling, and typography. It is not a perfec
 
 ## Expected Tablet Result
 
-- The app loads the definition whose `macAddress` matches the tablet.
+- The app loads the definition whose `macAddress` matches the tablet, or whose `deviceId` matches the tablet's fallback `android-...` ID when MAC access is blocked.
 - It shows the tablet's local IP address and MAC address when Android exposes it.
 - It shows green or red status indicators for internet and printer reachability.
 - It tests internet reachability.
@@ -49,7 +50,7 @@ Square KDS version comparison uses the configured package name, currently expect
 
 ## Troubleshooting
 
-- If the app says it cannot read a MAC address, confirm the KDS tablet is connected and that Wi-Fi MAC randomization is disabled when using Wi-Fi.
-- If the tablet cannot fetch config, confirm it can reach `http://10.20.12.100:3001` and that a matching `macAddress` exists in `/definitions`.
+- If the app says Android did not expose a MAC address, add the displayed fallback `android-...` device ID to the matching definition in `/definitions`.
+- If the tablet cannot fetch config, confirm it can reach `http://10.20.12.100:3001` and that a matching `macAddress` or fallback `deviceId` exists in `/definitions`.
 - If printer checks fail, verify the printer IP and port from the same network/VLAN as the tablet.
 - If Square KDS version says package not configured, set `squareKdsPackageName` in the JSON definition.

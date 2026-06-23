@@ -2,7 +2,7 @@
 
 KDS Status is a fleet dashboard and Android companion app for diagnosing Square KDS tablets.
 
-KDS tablets identify themselves by fixed Ethernet or Wi-Fi MAC address. The Android app has the internal dashboard URL baked in, so Miradore only needs to deploy the APK.
+KDS tablets identify themselves by fixed Ethernet or Wi-Fi MAC address when Android exposes it. If Android blocks MAC access, the Android app falls back to a stable `android-...` device ID that you can paste into the dashboard JSON. The Android app has the internal dashboard URL baked in, so Miradore only needs to deploy the APK.
 
 ## Apps
 
@@ -45,6 +45,7 @@ The local tablet emulator is named `kds-tablet`:
 Device requests use:
 
 - `X-Device-Mac-Address` for device lookup
+- `X-Device-Id` as a fallback when Android blocks MAC access
 - `X-Device-Secret` for the baked-in shared internal app secret
 
 Endpoints:
@@ -63,10 +64,11 @@ Open `/definitions` in the dashboard and edit the JSON:
   "devices": [
     {
       "macAddress": "aa:bb:cc:dd:ee:ff",
+      "deviceId": "android-abc123def4567890",
       "displayName": "Expo KDS"
     }
   ]
 }
 ```
 
-The dashboard fills in defaults for optional fields such as `deviceId`, `locationName`, `role`, empty settings, and printer port `9100`.
+The dashboard fills in defaults for optional fields such as `deviceId`, `locationName`, `role`, empty settings, and printer port `9100`. Only add `deviceId` yourself when the tablet app shows a fallback `android-...` ID.

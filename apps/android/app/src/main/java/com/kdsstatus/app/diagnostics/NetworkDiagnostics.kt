@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.provider.Settings
 import com.kdsstatus.app.BuildConfig
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.InternetCheckPayload
@@ -27,6 +28,32 @@ import kotlinx.coroutines.withContext
 
 class NetworkDiagnostics(private val context: Context) {
     fun readLocalMacAddress(): String? = readNetworkState().localMacAddress
+
+    fun readDeviceIdentity(): DeviceIdentity {
+        val macAddress = readLocalMacAddress()
+        if (!macAddress.isNullOrBlank()) {
+            return DeviceIdentity(
+                macAddress = macAddress,
+                deviceId = null,
+                setupHint = null
+            )
+        }
+
+        val androidDeviceId = readAndroidDeviceId()
+        if (!androidDeviceId.isNullOrBlank()) {
+            return DeviceIdentity(
+                macAddress = null,
+                deviceId = androidDeviceId,
+                setupHint = "Android did not expose a device MAC address. Add \"deviceId\": \"$androidDeviceId\" to this screen's JSON definition in the dashboard."
+            )
+        }
+
+        return DeviceIdentity(
+            macAddress = null,
+            deviceId = null,
+            setupHint = "Android did not expose a device MAC address or fallback Android device ID."
+        )
+    }
 
     suspend fun run(config: DeviceConfigResponse): StatusReportPayload = coroutineScope {
         val networkState = readNetworkState()
@@ -244,6 +271,16 @@ class NetworkDiagnostics(private val context: Context) {
                 .firstOrNull(::isUsableMacAddress)
         }.getOrNull()
 
+    private fun readAndroidDeviceId(): String? =
+        runCatching {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                ?.trim()
+                ?.lowercase(Locale.US)
+                ?.takeIf { androidId -> androidId.isNotBlank() && androidId != "9774d56d682e549c" }
+                ?.takeIf { androidId -> androidId.matches(Regex("[a-z0-9]+")) }
+                ?.let { androidId -> "android-$androidId" }
+        }.getOrNull()
+
     private fun ByteArray.toMacAddress(): String =
         joinToString(":") { byte -> "%02x".format(byte) }
 
@@ -271,6 +308,12 @@ class NetworkDiagnostics(private val context: Context) {
                 ?.takeUnless { mac -> mac == "00:00:00:00:00:00" }
         }.getOrNull()
 }
+
+data class DeviceIdentity(
+    val macAddress: String?,
+    val deviceId: String?,
+    val setupHint: String?
+)
 
 private data class NetworkState(
     val localIp: String?,

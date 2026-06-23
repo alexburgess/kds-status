@@ -71,9 +71,10 @@ The Android app has the dashboard URL and shared internal secret baked in. It id
 
 ```text
 X-Device-Mac-Address
+X-Device-Id
 ```
 
-The API looks for the JSON device with the matching `macAddress`. You do not need to configure Miradore app settings.
+The API first looks for the JSON device with the matching `macAddress`. If Android blocks MAC access, the app sends a fallback `android-...` value as `X-Device-Id`; add that value to the JSON device as `deviceId`. You do not need to configure Miradore app settings.
 
 ## API Smoke Test
 
@@ -81,6 +82,14 @@ After adding a matching definition in `/definitions`, test config lookup:
 
 ```bash
 curl -H "X-Device-Mac-Address: aa:bb:cc:dd:ee:ff" \
+  -H "X-Device-Secret: kds-status-internal-v1" \
+  http://localhost:3000/api/device/config
+```
+
+Fallback ID lookup uses the same endpoint:
+
+```bash
+curl -H "X-Device-Id: android-abc123def4567890" \
   -H "X-Device-Secret: kds-status-internal-v1" \
   http://localhost:3000/api/device/config
 ```

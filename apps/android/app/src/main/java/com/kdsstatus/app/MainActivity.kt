@@ -64,6 +64,7 @@ import com.kdsstatus.app.data.PrinterTarget
 import com.kdsstatus.app.data.SquareKdsCheckPayload
 import com.kdsstatus.app.data.SquareKdsDefinition
 import com.kdsstatus.app.data.StatusReportPayload
+import com.kdsstatus.app.diagnostics.DeviceIdentity
 import com.kdsstatus.app.diagnostics.NetworkDiagnostics
 import com.kdsstatus.app.network.DeviceApiClient
 import com.kdsstatus.app.ui.StatusFormatter
@@ -105,15 +106,21 @@ private fun KdsStatusApp(
             return
         }
 
-        val deviceMacAddress = diagnostics.readLocalMacAddress()
-        if (deviceMacAddress.isNullOrBlank()) {
+        val deviceIdentity = diagnostics.readDeviceIdentity()
+        if (deviceIdentity.macAddress.isNullOrBlank() && deviceIdentity.deviceId.isNullOrBlank()) {
             state = ScreenState.MissingConfig(
-                appConfig.copy(missingKeys = appConfig.missingKeys + "readable device MAC address")
+                appConfig.copy(missingKeys = appConfig.missingKeys + "readable device MAC address or Android device ID")
             )
             return
         }
 
-        val api = DeviceApiClient(appConfig, deviceMacAddress)
+        val runtimeConfig = if (appConfig.deviceId.isBlank() && !deviceIdentity.deviceId.isNullOrBlank()) {
+            appConfig.copy(deviceId = deviceIdentity.deviceId)
+        } else {
+            appConfig
+        }
+
+        val api = DeviceApiClient(runtimeConfig, deviceIdentity.macAddress)
         val fetchedConfig = api.fetchConfig()
         val cachedConfig = if (fetchedConfig.isSuccess) {
             configCache.save(fetchedConfig.getOrThrow())
@@ -123,7 +130,8 @@ private fun KdsStatusApp(
 
         if (cachedConfig == null) {
             val message = fetchedConfig.exceptionOrNull()?.message.orEmpty()
-            state = ScreenState.Error("Could not fetch device config and no cached config is available: $message")
+            val identityHint = deviceIdentity.setupHint?.let { "\n\n$it" }.orEmpty()
+            state = ScreenState.Error("Could not fetch device config and no cached config is available: $message$identityHint")
             return
         }
 
@@ -135,7 +143,8 @@ private fun KdsStatusApp(
         val postError = api.postStatus(report).exceptionOrNull()
 
         state = ScreenState.Ready(
-            appConfig = appConfig,
+            appConfig = runtimeConfig,
+            deviceIdentity = deviceIdentity,
             remoteConfig = remoteConfig,
             report = report,
             postError = postError?.message,
@@ -160,6 +169,11 @@ private fun KdsStatusApp(
                     deviceId = "preview-kds",
                     deviceSecret = "preview",
                     apiBaseUrl = "preview"
+                ),
+                deviceIdentity = DeviceIdentity(
+                    macAddress = "02:00:00:12:34:44",
+                    deviceId = "preview-kds",
+                    setupHint = null
                 ),
                 remoteConfig = previewDeviceConfig(),
                 report = previewStatusReport(),
@@ -225,7 +239,7 @@ private fun MissingConfigCard(config: AppConfig, onPreview: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(StatusFormatter.missingConfigMessage(config.missingKeys), color = Color(0xFFB42318))
         Spacer(Modifier.height(8.dp))
-        Text("This app identifies the KDS screen by its fixed Ethernet or Wi-Fi MAC address. Confirm the tablet is connected, then retry.")
+        Text("This app identifies the KDS screen by fixed Ethernet/Wi-Fi MAC when Android exposes it. If Android blocks MAC access, it uses a fallback Android device ID shown on the error screen.")
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onPreview,
@@ -259,6 +273,7 @@ private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
     ) {
         StationOverviewPanel(
             config = state.remoteConfig,
+            deviceIdentity = state.deviceIdentity,
             report = state.report,
             postError = state.postError,
             configCollectedAtMillis = state.configCollectedAtMillis,
@@ -282,6 +297,7 @@ private fun ReadyScreen(state: ScreenState.Ready, onRefresh: () -> Unit) {
 @Composable
 private fun StationOverviewPanel(
     config: DeviceConfigResponse,
+    deviceIdentity: DeviceIdentity,
     report: StatusReportPayload,
     postError: String?,
     configCollectedAtMillis: Long,
@@ -305,7 +321,7 @@ private fun StationOverviewPanel(
             overflow = TextOverflow.Ellipsis
         )
 
-        InfoPillSection(report)
+        InfoPillSection(report, deviceIdentity)
 
         ConnectivityCard(
             title = "CONNECTIVITY OF THIS DEVICE",
@@ -416,10 +432,13 @@ private fun ConfigurationWorkspace(
 }
 
 @Composable
-private fun InfoPillSection(report: StatusReportPayload) {
+private fun InfoPillSection(report: StatusReportPayload, deviceIdentity: DeviceIdentity) {
+    val identityValue = report.localMacAddress ?: deviceIdentity.deviceId ?: "Unavailable"
+    val identityDescription = if (report.localMacAddress.isNullOrBlank()) "Device ID" else "MAC address"
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoPill(R.drawable.fa_network_wired, report.localMacAddress ?: "Unavailable", "MAC address")
+            InfoPill(R.drawable.fa_network_wired, identityValue, identityDescription)
             InfoPill(R.drawable.fa_globe, report.localIp ?: "Unknown", "IP address")
         }
         Row {
@@ -1132,7 +1151,7 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
     displayName = "Expo Line 01",
     locationName = "Downtown Kitchen",
     role = "Expo screen",
-    notes = "Preview data. Real tablets load this from the dashboard using their fixed Ethernet or Wi-Fi MAC address.",
+    notes = "Preview data. Real tablets load this from the dashboard using their fixed Ethernet/Wi-Fi MAC address or fallback Android device ID.",
     squareKds = SquareKdsDefinition(
         packageName = "com.squareup.rst.kds",
         availableVersion = "7.12",
@@ -1221,6 +1240,7 @@ private sealed interface ScreenState {
     data class Error(val message: String) : ScreenState
     data class Ready(
         val appConfig: AppConfig,
+        val deviceIdentity: DeviceIdentity,
         val remoteConfig: DeviceConfigResponse,
         val report: StatusReportPayload,
         val postError: String?,

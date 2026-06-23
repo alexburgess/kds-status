@@ -16,8 +16,8 @@ class StatusFormatterTest {
     @Test
     fun formatsMissingAppSetup() {
         assertEquals(
-            "Missing app setup: readable device MAC address",
-            StatusFormatter.missingConfigMessage(listOf("readable device MAC address"))
+            "Missing app setup: readable device MAC address or Android device ID",
+            StatusFormatter.missingConfigMessage(listOf("readable device MAC address or Android device ID"))
         )
     }
 
