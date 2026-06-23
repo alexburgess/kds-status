@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { verifySharedDeviceSecret } from "@/lib/device-auth";
 import { assignDeviceIdToDefinition, DefinitionValidationError } from "@/lib/local-definitions";
-import { buildDeviceConfig } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { lookupPlayStoreVersion } from "@/lib/play-store-version";
+import type { DeviceDefinition } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid device credentials" }, { status: 401 });
   }
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfiguredForDeviceClaim()) {
     return Response.json(
       { error: "Device self-claim is only available when using local JSON definitions." },
       { status: 501 }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         displayName: device.displayName,
         locationName: device.locationName
       },
-      config: await buildDeviceConfig(device)
+      config: await buildLocalDeviceConfig(device)
     });
   } catch (error) {
     if (error instanceof DefinitionValidationError) {
@@ -71,4 +71,36 @@ export async function POST(request: Request) {
 
     throw error;
   }
+}
+
+function isSupabaseConfiguredForDeviceClaim() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+async function buildLocalDeviceConfig(device: DeviceDefinition) {
+  const playStoreVersion = await lookupPlayStoreVersion(device.squareKdsPackageName);
+  const availableVersion = playStoreVersion.version ?? device.squareKdsExpectedVersion;
+
+  return {
+    deviceId: device.deviceId,
+    displayName: device.displayName,
+    locationName: device.locationName,
+    role: device.role,
+    notes: device.notes,
+    squareKds: {
+      packageName: device.squareKdsPackageName,
+      availableVersion,
+      expectedVersion: availableVersion,
+      versionSource: playStoreVersion.version ? "play-store" : device.squareKdsExpectedVersion ? "definition-fallback" : playStoreVersion.source,
+      versionLookupError: playStoreVersion.error,
+      versionCheckedAt: playStoreVersion.checkedAt,
+      playStoreUpdatedAt: playStoreVersion.updatedAt
+    },
+    fulfillmentMethods: device.fulfillmentMethods,
+    expectedSettings: device.expectedSettings,
+    printers: device.printers.map((printer) => ({
+      ...printer,
+      port: printer.port || 9100
+    }))
+  };
 }
