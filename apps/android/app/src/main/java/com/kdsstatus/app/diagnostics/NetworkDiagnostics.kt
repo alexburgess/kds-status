@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.provider.Settings
 import com.kdsstatus.app.BuildConfig
@@ -90,7 +91,7 @@ class NetworkDiagnostics(private val context: Context) {
             ?.map { it.address }
             ?.firstOrNull { address -> !address.isLoopbackAddress && address is Inet4Address }
             ?.hostAddress
-        val localMacAddress = readBestLocalMacAddress(interfaceName)
+        val localMacAddress = readBestLocalMacAddress(interfaceName, capabilities)
 
         val transport = when {
             capabilities == null -> "unknown"
@@ -103,7 +104,7 @@ class NetworkDiagnostics(private val context: Context) {
 
         val diagnostics = buildList {
             if (localIp == null) add("No IPv4 address found on active network")
-            if (localMacAddress == null) add("Device MAC address is unavailable from active, Wi-Fi, Ethernet, and known network interfaces")
+            if (localMacAddress == null) add("Device MAC address is unavailable from active, Wi-Fi, Ethernet, network capabilities, and known network interfaces")
             if (capabilities == null) add("No network capabilities available")
         }
 
@@ -205,7 +206,7 @@ class NetworkDiagnostics(private val context: Context) {
     private fun elapsedMs(startNanos: Long): Int =
         ((System.nanoTime() - startNanos) / 1_000_000.0).roundToInt()
 
-    private fun readBestLocalMacAddress(activeInterfaceName: String?): String? {
+    private fun readBestLocalMacAddress(activeInterfaceName: String?, capabilities: NetworkCapabilities?): String? {
         val candidateInterfaceNames = buildList {
             activeInterfaceName?.let(::add)
             add("eth0")
@@ -214,6 +215,10 @@ class NetworkDiagnostics(private val context: Context) {
         }.distinct()
 
         candidateInterfaceNames.firstNotNullOfOrNull(::readInterfaceMacAddress)?.let { macAddress ->
+            return macAddress
+        }
+
+        readNetworkCapabilitiesWifiMacAddress(capabilities)?.let { macAddress ->
             return macAddress
         }
 
@@ -252,6 +257,14 @@ class NetworkDiagnostics(private val context: Context) {
             @Suppress("DEPRECATION")
             wifiManager
                 ?.connectionInfo
+                ?.macAddress
+                ?.normalizeMacAddress()
+                ?.takeIf(::isUsableMacAddress)
+        }.getOrNull()
+
+    private fun readNetworkCapabilitiesWifiMacAddress(capabilities: NetworkCapabilities?): String? =
+        runCatching {
+            (capabilities?.transportInfo as? WifiInfo)
                 ?.macAddress
                 ?.normalizeMacAddress()
                 ?.takeIf(::isUsableMacAddress)
