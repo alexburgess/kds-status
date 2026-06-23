@@ -6,7 +6,7 @@ Upload and assign the APK as an internal/private Android app in Miradore. No per
 
 Device matching happens on the dashboard:
 
-1. Find the tablet Ethernet MAC address.
+1. Find the tablet fixed Ethernet or Wi-Fi MAC address.
 2. Open `/definitions` on the dashboard.
 3. Add a JSON device with that `macAddress`.
 4. Reopen **KDS Status** on the tablet.

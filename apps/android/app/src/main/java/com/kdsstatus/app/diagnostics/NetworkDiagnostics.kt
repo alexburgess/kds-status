@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import com.kdsstatus.app.BuildConfig
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.InternetCheckPayload
@@ -62,7 +63,7 @@ class NetworkDiagnostics(private val context: Context) {
             ?.map { it.address }
             ?.firstOrNull { address -> !address.isLoopbackAddress && address is Inet4Address }
             ?.hostAddress
-        val localMacAddress = interfaceName?.let(::readInterfaceMacAddress)
+        val localMacAddress = readBestLocalMacAddress(interfaceName)
 
         val transport = when {
             capabilities == null -> "unknown"
@@ -75,7 +76,7 @@ class NetworkDiagnostics(private val context: Context) {
 
         val diagnostics = buildList {
             if (localIp == null) add("No IPv4 address found on active network")
-            if (localMacAddress == null) add("MAC address is unavailable on this Android build or network interface")
+            if (localMacAddress == null) add("Device MAC address is unavailable from active, Wi-Fi, Ethernet, and known network interfaces")
             if (capabilities == null) add("No network capabilities available")
         }
 
@@ -177,14 +178,83 @@ class NetworkDiagnostics(private val context: Context) {
     private fun elapsedMs(startNanos: Long): Int =
         ((System.nanoTime() - startNanos) / 1_000_000.0).roundToInt()
 
+    private fun readBestLocalMacAddress(activeInterfaceName: String?): String? {
+        val candidateInterfaceNames = buildList {
+            activeInterfaceName?.let(::add)
+            add("eth0")
+            add("wlan0")
+            add("en0")
+        }.distinct()
+
+        candidateInterfaceNames.firstNotNullOfOrNull(::readInterfaceMacAddress)?.let { macAddress ->
+            return macAddress
+        }
+
+        readWifiManagerMacAddress()?.let { macAddress ->
+            return macAddress
+        }
+
+        return readEnumeratedInterfaceMacAddress(candidateInterfaceNames)
+    }
+
     private fun readInterfaceMacAddress(interfaceName: String): String? =
+        readNetworkInterfaceMacAddress(interfaceName) ?: readSysfsInterfaceMacAddress(interfaceName)
+
+    private fun readNetworkInterfaceMacAddress(interfaceName: String): String? =
         runCatching {
             NetworkInterface.getByName(interfaceName)
                 ?.hardwareAddress
                 ?.takeIf { bytes -> bytes.isNotEmpty() }
-                ?.joinToString(":") { byte -> "%02x".format(byte) }
-                ?.takeUnless { mac -> mac == "02:00:00:00:00:00" }
+                ?.toMacAddress()
+                ?.takeIf(::isUsableMacAddress)
         }.getOrNull()
+
+    private fun readSysfsInterfaceMacAddress(interfaceName: String): String? =
+        runCatching {
+            File("/sys/class/net/$interfaceName/address")
+                .takeIf { file -> file.canRead() }
+                ?.readText()
+                ?.trim()
+                ?.normalizeMacAddress()
+                ?.takeIf(::isUsableMacAddress)
+        }.getOrNull()
+
+    private fun readWifiManagerMacAddress(): String? =
+        runCatching {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            @Suppress("DEPRECATION")
+            wifiManager
+                ?.connectionInfo
+                ?.macAddress
+                ?.normalizeMacAddress()
+                ?.takeIf(::isUsableMacAddress)
+        }.getOrNull()
+
+    private fun readEnumeratedInterfaceMacAddress(preferredNames: List<String>): String? =
+        runCatching {
+            NetworkInterface.getNetworkInterfaces()
+                .toList()
+                .sortedWith(compareBy<NetworkInterface> { networkInterface ->
+                    val preferredIndex = preferredNames.indexOf(networkInterface.name)
+                    if (preferredIndex == -1) Int.MAX_VALUE else preferredIndex
+                }.thenBy { networkInterface -> networkInterface.name })
+                .asSequence()
+                .filter { networkInterface -> networkInterface.name != "lo" }
+                .mapNotNull { networkInterface -> networkInterface.hardwareAddress?.takeIf { bytes -> bytes.isNotEmpty() }?.toMacAddress() }
+                .firstOrNull(::isUsableMacAddress)
+        }.getOrNull()
+
+    private fun ByteArray.toMacAddress(): String =
+        joinToString(":") { byte -> "%02x".format(byte) }
+
+    private fun String.normalizeMacAddress(): String =
+        trim().lowercase(Locale.US).replace("-", ":")
+
+    private fun isUsableMacAddress(macAddress: String): Boolean =
+        macAddress.matches(Regex("([0-9a-f]{2}:){5}[0-9a-f]{2}")) &&
+            macAddress != "02:00:00:00:00:00" &&
+            macAddress != "00:00:00:00:00:00" &&
+            macAddress != "ff:ff:ff:ff:ff:ff"
 
     private fun readArpMacAddress(host: String): String? =
         runCatching {

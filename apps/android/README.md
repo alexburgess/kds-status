@@ -1,6 +1,6 @@
 # KDS Status Android App
 
-This is the tablet companion app. It has the internal dashboard URL baked in, fetches its device definition by Ethernet MAC address, runs local diagnostics, and reports status to the dashboard API.
+This is the tablet companion app. It has the internal dashboard URL baked in, fetches its device definition by fixed Ethernet or Wi-Fi MAC address, runs local diagnostics, and reports status to the dashboard API.
 
 Built-in API target:
 

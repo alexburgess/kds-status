@@ -2,7 +2,7 @@
 
 KDS Status is a fleet dashboard and Android companion app for diagnosing Square KDS tablets.
 
-KDS tablets identify themselves by Ethernet MAC address. The Android app has the internal dashboard URL baked in, so Miradore only needs to deploy the APK.
+KDS tablets identify themselves by fixed Ethernet or Wi-Fi MAC address. The Android app has the internal dashboard URL baked in, so Miradore only needs to deploy the APK.
 
 ## Apps
 

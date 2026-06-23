@@ -108,7 +108,7 @@ private fun KdsStatusApp(
         val deviceMacAddress = diagnostics.readLocalMacAddress()
         if (deviceMacAddress.isNullOrBlank()) {
             state = ScreenState.MissingConfig(
-                appConfig.copy(missingKeys = appConfig.missingKeys + "readable Ethernet MAC address")
+                appConfig.copy(missingKeys = appConfig.missingKeys + "readable device MAC address")
             )
             return
         }
@@ -225,7 +225,7 @@ private fun MissingConfigCard(config: AppConfig, onPreview: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(StatusFormatter.missingConfigMessage(config.missingKeys), color = Color(0xFFB42318))
         Spacer(Modifier.height(8.dp))
-        Text("This app identifies the KDS screen by Ethernet MAC address. Confirm the tablet is on Ethernet, then retry.")
+        Text("This app identifies the KDS screen by its fixed Ethernet or Wi-Fi MAC address. Confirm the tablet is connected, then retry.")
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onPreview,
@@ -1132,7 +1132,7 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
     displayName = "Expo Line 01",
     locationName = "Downtown Kitchen",
     role = "Expo screen",
-    notes = "Preview data. Real tablets load this from the dashboard using their Ethernet MAC address.",
+    notes = "Preview data. Real tablets load this from the dashboard using their fixed Ethernet or Wi-Fi MAC address.",
     squareKds = SquareKdsDefinition(
         packageName = "com.squareup.rst.kds",
         availableVersion = "7.12",

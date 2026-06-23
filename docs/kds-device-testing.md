@@ -12,7 +12,7 @@ The real device-side experience is the Android app in `apps/android`.
 
 2. Upload `apps/android/app/build/outputs/apk/debug/app-debug.apk` to Miradore as an internal/private Android app.
 3. Deploy it to one test KDS tablet.
-4. In the dashboard, open `/definitions` and add a JSON device whose `macAddress` matches the tablet Ethernet MAC address.
+4. In the dashboard, open `/definitions` and add a JSON device whose `macAddress` matches the tablet fixed Ethernet or Wi-Fi MAC address.
 5. Open **KDS Status** on the tablet.
 
 No Miradore managed app configuration is required.
@@ -49,7 +49,7 @@ Square KDS version comparison uses the configured package name, currently expect
 
 ## Troubleshooting
 
-- If the app says it cannot read a MAC address, confirm the KDS tablet is on Ethernet and reopen the app.
+- If the app says it cannot read a MAC address, confirm the KDS tablet is connected and that Wi-Fi MAC randomization is disabled when using Wi-Fi.
 - If the tablet cannot fetch config, confirm it can reach `http://10.20.12.100:3001` and that a matching `macAddress` exists in `/definitions`.
 - If printer checks fail, verify the printer IP and port from the same network/VLAN as the tablet.
 - If Square KDS version says package not configured, set `squareKdsPackageName` in the JSON definition.

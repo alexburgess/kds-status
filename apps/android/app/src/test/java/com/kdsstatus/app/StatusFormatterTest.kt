@@ -16,8 +16,8 @@ class StatusFormatterTest {
     @Test
     fun formatsMissingAppSetup() {
         assertEquals(
-            "Missing app setup: readable Ethernet MAC address",
-            StatusFormatter.missingConfigMessage(listOf("readable Ethernet MAC address"))
+            "Missing app setup: readable device MAC address",
+            StatusFormatter.missingConfigMessage(listOf("readable device MAC address"))
         )
     }
 
