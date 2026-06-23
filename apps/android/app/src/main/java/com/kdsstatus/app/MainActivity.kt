@@ -1,6 +1,7 @@
 package com.kdsstatus.app
 
 import android.os.Bundle
+import androidx.annotation.DrawableRes
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -33,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -309,6 +311,7 @@ private fun StationOverviewPanel(
 
         ConnectivityCard(
             title = "CONNECTIVITY OF THIS DEVICE",
+            titleIconRes = R.drawable.fa_network_wired,
             ok = report.internet.ok,
             message = if (report.internet.ok) {
                 "THIS SCREEN IS CONNECTED TO\nTHE INTERNET"
@@ -329,6 +332,7 @@ private fun StationOverviewPanel(
         }
         ConnectivityCard(
             title = "PRINTER CONNECTIVITY",
+            titleIconRes = R.drawable.fa_print,
             ok = printersOk,
             message = printerConnectivityMessage(printer),
             detail = printerConnectivityDetail(printer),
@@ -428,28 +432,43 @@ private fun ConfigurationWorkspace(
 private fun InfoPillSection(report: StatusReportPayload) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoPill("MAC", report.localMacAddress ?: "Unavailable")
-            InfoPill("IP", report.localIp ?: "Unknown")
+            InfoPill(R.drawable.fa_network_wired, report.localMacAddress ?: "Unavailable", "MAC address")
+            InfoPill(R.drawable.fa_globe, report.localIp ?: "Unknown", "IP address")
         }
         Row {
-            InfoPill("V", squareKdsVersionPill(report))
+            InfoPill(R.drawable.fa_tablet_screen_button, squareKdsVersionPill(report), "Square KDS version")
         }
     }
 }
 
 @Composable
-private fun InfoPill(prefix: String, value: String) {
+private fun InfoPill(
+    @DrawableRes iconRes: Int,
+    value: String,
+    contentDescription: String
+) {
     AssistChip(
         onClick = {},
         label = {
-            Text(
-                "$prefix  $value",
-                color = Color(0xFF3C4043),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = contentDescription,
+                    tint = Color(0xFF3C4043),
+                    modifier = Modifier.size(13.dp)
+                )
+                Text(
+                    value,
+                    color = Color(0xFF3C4043),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         },
         shape = CircleShape,
         colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFF0F0F0)),
@@ -461,6 +480,7 @@ private fun InfoPill(prefix: String, value: String) {
 @Composable
 private fun ConnectivityCard(
     title: String,
+    @DrawableRes titleIconRes: Int,
     ok: Boolean?,
     message: String,
     detail: String?,
@@ -470,11 +490,6 @@ private fun ConnectivityCard(
         true -> Color(0xFF34C759)
         false -> Color(0xFFE5484D)
         null -> Color(0xFFFFB020)
-    }
-    val symbol = when (ok) {
-        true -> "✓"
-        false -> "×"
-        null -> "?"
     }
 
     Card(
@@ -497,20 +512,38 @@ private fun ConnectivityCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                Text(
-                    title,
-                    color = Color(0xFF1F1F1F),
-                    fontSize = 14.sp,
-                    letterSpacing = 3.sp,
-                    textAlign = TextAlign.Center
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(titleIconRes),
+                        contentDescription = null,
+                        tint = Color(0xFF1F1F1F),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        title,
+                        color = Color(0xFF1F1F1F),
+                        fontSize = 14.sp,
+                        letterSpacing = 3.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .size(80.dp)
                         .background(statusColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(symbol, color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        painter = painterResource(statusIconRes(ok)),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -886,6 +919,14 @@ private fun squareKdsVersionPill(report: StatusReportPayload): String {
 
     return "$installedVersion $versionSuffix"
 }
+
+@DrawableRes
+private fun statusIconRes(ok: Boolean?): Int =
+    when (ok) {
+        true -> R.drawable.fa_check
+        false -> R.drawable.fa_xmark
+        null -> R.drawable.fa_question
+    }
 
 private fun printerConnectivityMessage(printer: PrinterCheckPayload?): String =
     when {

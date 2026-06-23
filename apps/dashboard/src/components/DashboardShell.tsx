@@ -289,46 +289,25 @@ function DefinitionEditor({
 }
 
 function KitchenIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5l-2 3-2-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
-      <path d="M7 8h10M7 12h6" />
-    </svg>
-  );
+  return <FontAwesomeIcon icon="utensils" />;
 }
 
 function FleetIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="5" width="16" height="11" rx="2" />
-      <path d="M9 20h6M12 16v4" />
-    </svg>
-  );
+  return <FontAwesomeIcon icon="tv" />;
 }
 
 function SettingsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-      <path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" />
-    </svg>
-  );
+  return <FontAwesomeIcon icon="gear" />;
 }
 
 function HistoryIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 12a8 8 0 1 0 3-6.2" />
-      <path d="M4 5v5h5M12 8v5l4 2" />
-    </svg>
-  );
+  return <FontAwesomeIcon icon="clock-rotate-left" />;
 }
 
 function SaveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 4h12l2 2v14H5V4Z" />
-      <path d="M8 4v6h8V4M8 20v-6h8v6" />
-    </svg>
-  );
+  return <FontAwesomeIcon icon="floppy-disk" />;
+}
+
+function FontAwesomeIcon({ icon }: { icon: string }) {
+  return <i aria-hidden="true" className={`fa-solid fa-${icon} fa-icon`} />;
 }

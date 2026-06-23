@@ -56,6 +56,16 @@ svg {
   stroke-width: 1.8;
 }
 
+.fa-icon {
+  align-items: center;
+  display: inline-flex;
+  font-size: 16px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  width: 18px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
