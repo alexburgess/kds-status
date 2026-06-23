@@ -58,6 +58,15 @@ export interface DefinitionEditorState {
   error?: string;
 }
 
+export interface DeviceClaimOption {
+  deviceId: string;
+  displayName: string;
+  locationName: string;
+  role: string;
+  macAddress?: string;
+  active: boolean;
+}
+
 export class DefinitionValidationError extends Error {
   constructor(
     message: string,
@@ -127,6 +136,69 @@ export async function writeDefinitionsJson(jsonText: string) {
     deviceCount: devices.length,
     filePath
   };
+}
+
+export async function getDeviceClaimOptions(): Promise<DeviceClaimOption[]> {
+  const devices = await readDeviceDefinitions();
+
+  return devices.map((device) => ({
+    deviceId: device.deviceId,
+    displayName: device.displayName,
+    locationName: device.locationName,
+    role: device.role,
+    macAddress: device.macAddress,
+    active: device.active
+  }));
+}
+
+export async function assignDeviceIdToDefinition(targetDeviceId: string, nextDeviceId: string) {
+  const normalizedTargetDeviceId = normalizeDeviceId(targetDeviceId);
+  const normalizedNextDeviceId = normalizeDeviceId(nextDeviceId);
+
+  if (!normalizedTargetDeviceId) {
+    throw new DefinitionValidationError("Device selection is invalid.", ["targetDeviceId is required."]);
+  }
+
+  if (!normalizedNextDeviceId?.startsWith("android-")) {
+    throw new DefinitionValidationError("Fallback device ID is invalid.", [
+      "deviceId must be the android-... value shown on the tablet."
+    ]);
+  }
+
+  const devices = await readDeviceDefinitions();
+  const targetIndex = devices.findIndex((device) => device.deviceId === normalizedTargetDeviceId);
+
+  if (targetIndex === -1) {
+    throw new DefinitionValidationError("Device selection was not found.", [
+      `No definition exists for deviceId ${normalizedTargetDeviceId}.`
+    ]);
+  }
+
+  const duplicateDevice = devices.find(
+    (device, index) => index !== targetIndex && device.deviceId === normalizedNextDeviceId
+  );
+
+  if (duplicateDevice) {
+    throw new DefinitionValidationError("Fallback device ID is already assigned.", [
+      `${normalizedNextDeviceId} is already assigned to ${duplicateDevice.displayName}.`
+    ]);
+  }
+
+  const nextDevices = devices.map((device, index) => {
+    if (index !== targetIndex) {
+      return device;
+    }
+
+    return {
+      ...device,
+      id: device.id === device.deviceId ? normalizedNextDeviceId : device.id,
+      deviceId: normalizedNextDeviceId
+    };
+  });
+
+  await writeDefinitionsJson(stringifyDefinitions({ devices: nextDevices }));
+
+  return nextDevices[targetIndex];
 }
 
 export function parseDefinitionsJson(jsonText: string): DeviceDefinition[] {

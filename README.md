@@ -52,6 +52,8 @@ Endpoints:
 
 - `GET /api/device/config`
 - `POST /api/device/status`
+- `GET /api/device/claim-options` for the tablet fallback dropdown
+- `POST /api/device/claim` to save the tablet's `android-...` ID to the selected definition
 
 See [docs/setup.md](docs/setup.md) and [docs/miradore-managed-config.md](docs/miradore-managed-config.md).
 
@@ -71,4 +73,4 @@ Open `/definitions` in the dashboard and edit the JSON:
 }
 ```
 
-The dashboard fills in defaults for optional fields such as `deviceId`, `locationName`, `role`, empty settings, and printer port `9100`. Only add `deviceId` yourself when the tablet app shows a fallback `android-...` ID.
+The dashboard fills in defaults for optional fields such as `deviceId`, `locationName`, `role`, empty settings, and printer port `9100`. If automatic lookup fails on a tablet, the app can also show a dropdown of definitions and save its `android-...` ID to the selected device for you.

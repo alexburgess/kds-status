@@ -11,7 +11,7 @@ Device matching happens on the dashboard:
 3. Add a JSON device with that `macAddress`.
 4. Reopen **KDS Status** on the tablet.
 
-If Android blocks MAC access, the tablet app shows a fallback `android-...` device ID. Add that value to the same JSON device as `deviceId`, save the definition, then reopen **KDS Status**.
+If Android blocks MAC access, the tablet app shows a dropdown of dashboard definitions. Choose the correct station and it saves the tablet's fallback `android-...` device ID into that JSON device as `deviceId`. If the dropdown cannot load, you can still add that `deviceId` manually in `/definitions`.
 
 The app has the internal dashboard URL baked in:
 

@@ -16,6 +16,33 @@ data class DeviceConfigResponse(
 )
 
 @Serializable
+data class DeviceClaimOptionsResponse(
+    val options: List<DeviceClaimOption>
+)
+
+@Serializable
+data class DeviceClaimOption(
+    val deviceId: String,
+    val displayName: String,
+    val locationName: String,
+    val role: String,
+    val macAddress: String? = null,
+    val active: Boolean = true
+)
+
+@Serializable
+data class DeviceClaimRequest(
+    val deviceId: String,
+    val targetDeviceId: String
+)
+
+@Serializable
+data class DeviceClaimResponse(
+    val ok: Boolean,
+    val config: DeviceConfigResponse
+)
+
+@Serializable
 data class SquareKdsDefinition(
     val packageName: String? = null,
     val availableVersion: String? = null,

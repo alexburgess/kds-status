@@ -35,6 +35,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -46,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kdsstatus.app.data.AppConfig
 import com.kdsstatus.app.data.BuiltInConfigRepository
+import com.kdsstatus.app.data.DeviceClaimOption
 import com.kdsstatus.app.data.DeviceConfigCache
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.ExpectedSetting
@@ -73,6 +77,7 @@ import com.kdsstatus.app.diagnostics.DeviceIdentity
 import com.kdsstatus.app.diagnostics.NetworkDiagnostics
 import com.kdsstatus.app.network.DeviceApiClient
 import com.kdsstatus.app.ui.StatusFormatter
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,6 +143,7 @@ private fun KdsStatusApp(
     diagnostics: NetworkDiagnostics
 ) {
     var state by remember { mutableStateOf<ScreenState>(ScreenState.Loading) }
+    val coroutineScope = rememberCoroutineScope()
 
     suspend fun refresh() {
         val appConfig = readConfig()
@@ -171,7 +177,19 @@ private fun KdsStatusApp(
         if (cachedConfig == null) {
             val message = fetchedConfig.exceptionOrNull()?.message.orEmpty()
             val identityHint = deviceIdentity.setupHint?.let { "\n\n$it" }.orEmpty()
-            state = ScreenState.Error("Could not fetch device config and no cached config is available: $message$identityHint")
+            if (!deviceIdentity.deviceId.isNullOrBlank()) {
+                val claimOptionsResult = api.fetchClaimOptions()
+                state = ScreenState.ChooseDevice(
+                    appConfig = runtimeConfig,
+                    deviceIdentity = deviceIdentity,
+                    fetchError = "Could not fetch device config and no cached config is available: $message$identityHint",
+                    options = claimOptionsResult.getOrNull()?.options.orEmpty(),
+                    optionsError = claimOptionsResult.exceptionOrNull()?.message,
+                    claimError = null
+                )
+            } else {
+                state = ScreenState.Error("Could not fetch device config and no cached config is available: $message$identityHint")
+            }
             return
         }
 
@@ -202,6 +220,22 @@ private fun KdsStatusApp(
         state = state,
         onRefresh = {
             state = ScreenState.Loading
+        },
+        onClaimDevice = { claimState, option ->
+            coroutineScope.launch {
+                state = ScreenState.Claiming(option.displayName)
+                val api = DeviceApiClient(claimState.appConfig, claimState.deviceIdentity.macAddress)
+                val claimResult = api.claimDevice(option.deviceId)
+
+                if (claimResult.isSuccess) {
+                    configCache.save(claimResult.getOrThrow())
+                    state = ScreenState.Loading
+                } else {
+                    state = claimState.copy(
+                        claimError = claimResult.exceptionOrNull()?.message ?: "Could not save this tablet identity."
+                    )
+                }
+            }
         },
         onPreview = {
             state = ScreenState.Ready(
@@ -236,6 +270,7 @@ private fun KdsStatusApp(
 private fun StatusContent(
     state: ScreenState,
     onRefresh: () -> Unit,
+    onClaimDevice: (ScreenState.ChooseDevice, DeviceClaimOption) -> Unit,
     onPreview: () -> Unit
 ) {
     when (state) {
@@ -252,7 +287,9 @@ private fun StatusContent(
 
                 when (state) {
                     ScreenState.Loading -> LoadingCard()
+                    is ScreenState.Claiming -> LoadingCard("Saving ${state.displayName}...")
                     is ScreenState.MissingConfig -> MissingConfigCard(state.config, onPreview)
+                    is ScreenState.ChooseDevice -> ClaimDeviceCard(state, onRefresh, onClaimDevice)
                     is ScreenState.Error -> ErrorCard(state.message, onRefresh)
                     is ScreenState.Ready -> Unit
                 }
@@ -262,12 +299,12 @@ private fun StatusContent(
 }
 
 @Composable
-private fun LoadingCard() {
+private fun LoadingCard(message: String = "Running diagnostics...") {
     StatusCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(color = Color(0xFF0F6D7A), strokeWidth = 3.dp)
             Spacer(Modifier.width(14.dp))
-            Text("Running diagnostics...", fontWeight = FontWeight.SemiBold)
+            Text(message, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -300,6 +337,84 @@ private fun ErrorCard(message: String, onRefresh: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Button(onClick = onRefresh, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F6D7A))) {
             Text("Retry")
+        }
+    }
+}
+
+@Composable
+private fun ClaimDeviceCard(
+    state: ScreenState.ChooseDevice,
+    onRefresh: () -> Unit,
+    onClaimDevice: (ScreenState.ChooseDevice, DeviceClaimOption) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedOption by remember(state.options) { mutableStateOf<DeviceClaimOption?>(null) }
+
+    StatusCard {
+        Text("Select this KDS screen", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(state.fetchError, color = Color(0xFFB42318))
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Tablet identity: ${state.deviceIdentity.deviceId ?: "Unavailable"}",
+            color = Color(0xFF14202B),
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(12.dp))
+
+        if (!state.optionsError.isNullOrBlank()) {
+            Text("Could not load the device list: ${state.optionsError}", color = Color(0xFFB42318))
+            Spacer(Modifier.height(12.dp))
+        }
+
+        if (state.options.isEmpty()) {
+            Text("No dashboard device definitions are available yet.", color = Color(0xFF4B5563))
+        } else {
+            Box {
+                Button(
+                    onClick = { expanded = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F6D7A)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(selectedOption?.let(::claimOptionLabel) ?: "Choose device definition")
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    state.options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(claimOptionLabel(option)) },
+                            onClick = {
+                                selectedOption = option
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    selectedOption?.let { option -> onClaimDevice(state, option) }
+                },
+                enabled = selectedOption != null,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save tablet identity to selected device")
+            }
+        }
+
+        if (!state.claimError.isNullOrBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(state.claimError, color = Color(0xFFB42318))
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRefresh, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6B7280))) {
+            Text("Retry automatic lookup")
         }
     }
 }
@@ -1165,6 +1280,12 @@ private fun squareKdsVersionPill(report: StatusReportPayload): String {
     return "$installedVersion $versionSuffix"
 }
 
+private fun claimOptionLabel(option: DeviceClaimOption): String =
+    listOf(option.displayName, option.locationName)
+        .filter { value -> value.isNotBlank() && value != "Unassigned" }
+        .joinToString(" - ")
+        .ifBlank { option.deviceId }
+
 @DrawableRes
 private fun statusIconRes(ok: Boolean?): Int =
     when (ok) {
@@ -1276,7 +1397,16 @@ private fun List<ExpectedSetting>.filterForSection(section: String, keyword: Str
 
 private sealed interface ScreenState {
     data object Loading : ScreenState
+    data class Claiming(val displayName: String) : ScreenState
     data class MissingConfig(val config: AppConfig) : ScreenState
+    data class ChooseDevice(
+        val appConfig: AppConfig,
+        val deviceIdentity: DeviceIdentity,
+        val fetchError: String,
+        val options: List<DeviceClaimOption>,
+        val optionsError: String?,
+        val claimError: String?
+    ) : ScreenState
     data class Error(val message: String) : ScreenState
     data class Ready(
         val appConfig: AppConfig,

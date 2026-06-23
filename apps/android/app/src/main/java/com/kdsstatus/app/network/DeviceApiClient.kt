@@ -1,6 +1,9 @@
 package com.kdsstatus.app.network
 
 import com.kdsstatus.app.data.AppConfig
+import com.kdsstatus.app.data.DeviceClaimOptionsResponse
+import com.kdsstatus.app.data.DeviceClaimRequest
+import com.kdsstatus.app.data.DeviceClaimResponse
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.StatusReportPayload
 import java.net.HttpURLConnection
@@ -44,6 +47,40 @@ class DeviceApiClient(
                 val errorBody = readErrorBody(connection)
                 error("Status report failed: HTTP ${connection.responseCode} ${errorBody.orEmpty()}")
             }
+        }
+    }
+
+    suspend fun fetchClaimOptions(): Result<DeviceClaimOptionsResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val connection = openConnection("/api/device/claim-options", "GET")
+            val responseBody = readResponseBody(connection)
+
+            if (connection.responseCode !in 200..299) {
+                error("Device list fetch failed: HTTP ${connection.responseCode} $responseBody")
+            }
+
+            json.decodeFromString<DeviceClaimOptionsResponse>(responseBody)
+        }
+    }
+
+    suspend fun claimDevice(targetDeviceId: String): Result<DeviceConfigResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val fallbackDeviceId = appConfig.deviceId.takeIf { deviceId -> deviceId.startsWith("android-") }
+                ?: error("This tablet does not have a fallback Android device ID to save.")
+            val connection = openConnection("/api/device/claim", "POST")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.doOutput = true
+            connection.outputStream.use { output ->
+                output.write(json.encodeToString(DeviceClaimRequest(fallbackDeviceId, targetDeviceId)).toByteArray())
+            }
+
+            val responseBody = readResponseBody(connection)
+
+            if (connection.responseCode !in 200..299) {
+                error("Device selection failed: HTTP ${connection.responseCode} $responseBody")
+            }
+
+            json.decodeFromString<DeviceClaimResponse>(responseBody).config
         }
     }
 

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseDefinitionsJson } from "@/lib/local-definitions";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import {
+  assignDeviceIdToDefinition,
+  parseDefinitionsJson,
+  writeDefinitionsJson
+} from "@/lib/local-definitions";
 
 describe("local JSON definitions", () => {
   it("normalizes a minimal MAC-address device definition", () => {
@@ -71,5 +78,45 @@ describe("local JSON definitions", () => {
         })
       )
     ).toThrow("Definitions JSON has duplicate fulfillment methods.");
+  });
+
+  it("assigns a fallback Android device ID to a selected definition", async () => {
+    const previousDefinitionsPath = process.env.KDS_DEFINITIONS_PATH;
+    const tempDir = await mkdtemp(join(tmpdir(), "kds-definitions-"));
+    const definitionsPath = join(tempDir, "device-definitions.json");
+    process.env.KDS_DEFINITIONS_PATH = definitionsPath;
+
+    try {
+      await writeDefinitionsJson(
+        JSON.stringify({
+          devices: [
+            {
+              macAddress: "aa:bb:cc:dd:ee:ff",
+              displayName: "Expo KDS"
+            }
+          ]
+        })
+      );
+
+      const device = await assignDeviceIdToDefinition("mac-aabbccddeeff", "Android-C7103D4DD888716D");
+      const written = JSON.parse(await readFile(definitionsPath, "utf8"));
+
+      expect(device).toMatchObject({
+        deviceId: "android-c7103d4dd888716d",
+        displayName: "Expo KDS"
+      });
+      expect(written.devices[0]).toMatchObject({
+        deviceId: "android-c7103d4dd888716d",
+        displayName: "Expo KDS"
+      });
+    } finally {
+      if (previousDefinitionsPath === undefined) {
+        delete process.env.KDS_DEFINITIONS_PATH;
+      } else {
+        process.env.KDS_DEFINITIONS_PATH = previousDefinitionsPath;
+      }
+
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });

@@ -39,6 +39,7 @@ The emulator is useful for layout, scrolling, and typography. It is not a perfec
 ## Expected Tablet Result
 
 - The app loads the definition whose `macAddress` matches the tablet, or whose `deviceId` matches the tablet's fallback `android-...` ID when MAC access is blocked.
+- If neither lookup matches and the dashboard is reachable, the app shows a dropdown of dashboard definitions. Selecting the correct station saves the tablet's `android-...` ID into that JSON definition.
 - It shows the tablet's local IP address and MAC address when Android exposes it.
 - It shows green or red status indicators for internet and printer reachability.
 - It tests internet reachability.
@@ -50,7 +51,8 @@ Square KDS version comparison uses the configured package name, currently expect
 
 ## Troubleshooting
 
-- If the app says Android did not expose a MAC address, add the displayed fallback `android-...` device ID to the matching definition in `/definitions`.
+- If the app says Android did not expose a MAC address and shows the selection dropdown, choose the correct station and save it.
+- If the dropdown cannot load, add the displayed fallback `android-...` device ID to the matching definition in `/definitions`.
 - If the tablet cannot fetch config, confirm it can reach `http://10.20.12.100:3001` and that a matching `macAddress` or fallback `deviceId` exists in `/definitions`.
 - If printer checks fail, verify the printer IP and port from the same network/VLAN as the tablet.
 - If Square KDS version says package not configured, set `squareKdsPackageName` in the JSON definition.

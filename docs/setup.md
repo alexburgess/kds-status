@@ -74,7 +74,7 @@ X-Device-Mac-Address
 X-Device-Id
 ```
 
-The API first looks for the JSON device with the matching `macAddress`. If Android blocks MAC access, the app sends a fallback `android-...` value as `X-Device-Id`; add that value to the JSON device as `deviceId`. You do not need to configure Miradore app settings.
+The API first looks for the JSON device with the matching `macAddress`. If Android blocks MAC access, the app sends a fallback `android-...` value as `X-Device-Id`. If that ID is not assigned yet, the tablet can load a dropdown of local JSON definitions and save its `android-...` ID to the selected device. You do not need to configure Miradore app settings.
 
 ## API Smoke Test
 
@@ -92,6 +92,25 @@ Fallback ID lookup uses the same endpoint:
 curl -H "X-Device-Id: android-abc123def4567890" \
   -H "X-Device-Secret: kds-status-internal-v1" \
   http://localhost:3000/api/device/config
+```
+
+The tablet selection flow uses:
+
+```bash
+curl -H "X-Device-Id: android-abc123def4567890" \
+  -H "X-Device-Secret: kds-status-internal-v1" \
+  http://localhost:3000/api/device/claim-options
+```
+
+Saving a selection writes that fallback ID into the local JSON definitions file:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-Device-Id: android-abc123def4567890" \
+  -H "X-Device-Secret: kds-status-internal-v1" \
+  -d '{"deviceId":"android-abc123def4567890","targetDeviceId":"mac-aabbccddeeff"}' \
+  http://localhost:3000/api/device/claim
 ```
 
 The Square KDS version is still retrieved automatically from Google Play when `squareKdsPackageName` is set. The current Square KDS package name is expected to be `com.squareup.rst.kds`, but confirm it from a real tablet before production rollout.
