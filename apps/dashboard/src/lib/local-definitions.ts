@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { normalizeMacAddress } from "./device-auth";
-import type { DeviceDefinition, PrinterDefinition } from "./types";
+import type { DeviceDefinition, FulfillmentMethodsDefinition, PrinterDefinition } from "./types";
 
 const ExpectedSettingSchema = z.object({
   section: z.string().min(1),
@@ -19,6 +19,16 @@ const PrinterDefinitionInputSchema = z.object({
   description: z.string().optional().nullable()
 });
 
+const FulfillmentMethodInputSchema = z.object({
+  name: z.string().min(1),
+  enabled: z.boolean()
+});
+
+const FulfillmentMethodsInputSchema = z.object({
+  includeFutureFulfillmentMethods: z.boolean().optional(),
+  methods: z.array(FulfillmentMethodInputSchema).optional()
+});
+
 const DeviceDefinitionInputSchema = z.object({
   id: z.string().optional(),
   deviceId: z.string().optional(),
@@ -30,6 +40,7 @@ const DeviceDefinitionInputSchema = z.object({
   active: z.boolean().optional(),
   squareKdsPackageName: z.string().optional().nullable(),
   squareKdsExpectedVersion: z.string().optional().nullable(),
+  fulfillmentMethods: FulfillmentMethodsInputSchema.optional(),
   expectedSettings: z.array(ExpectedSettingSchema).optional(),
   printers: z.array(PrinterDefinitionInputSchema).optional()
 });
@@ -194,10 +205,43 @@ function normalizeDefinitions(document: DeviceDefinitionsDocumentInput): DeviceD
       active: device.active ?? true,
       squareKdsPackageName: normalizeOptionalString(device.squareKdsPackageName),
       squareKdsExpectedVersion: normalizeOptionalString(device.squareKdsExpectedVersion),
+      fulfillmentMethods: normalizeFulfillmentMethods(device.fulfillmentMethods),
       expectedSettings: device.expectedSettings ?? [],
       printers: normalizePrinters(device.printers ?? [])
     };
   });
+}
+
+function normalizeFulfillmentMethods(
+  fulfillmentMethods: z.infer<typeof FulfillmentMethodsInputSchema> | undefined
+): FulfillmentMethodsDefinition | undefined {
+  if (!fulfillmentMethods) {
+    return undefined;
+  }
+
+  const seenNames = new Set<string>();
+  const methods = (fulfillmentMethods.methods ?? []).map((method, index) => {
+    const name = method.name.trim();
+    const normalizedName = normalizedNameKey(name);
+
+    if (seenNames.has(normalizedName)) {
+      throw new DefinitionValidationError("Definitions JSON has duplicate fulfillment methods.", [
+        `fulfillmentMethods.methods.${index}.name repeats ${name}.`
+      ]);
+    }
+
+    seenNames.add(normalizedName);
+
+    return {
+      name,
+      enabled: method.enabled
+    };
+  });
+
+  return {
+    includeFutureFulfillmentMethods: fulfillmentMethods.includeFutureFulfillmentMethods ?? false,
+    methods
+  };
 }
 
 function normalizePrinters(printers: Array<z.infer<typeof PrinterDefinitionInputSchema>>): PrinterDefinition[] {
@@ -232,6 +276,10 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function normalizedNameKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function formatIssues(error: z.ZodError) {

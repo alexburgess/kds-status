@@ -46,10 +46,24 @@ Useful optional fields:
 - `role`
 - `notes`
 - `squareKdsPackageName`
+- `fulfillmentMethods`
 - `expectedSettings`
 - `printers`
 
 Printers default to port `9100` when `port` is omitted.
+
+Fulfillment methods are defined per device because the available values come from the Square location:
+
+```json
+"fulfillmentMethods": {
+  "includeFutureFulfillmentMethods": false,
+  "methods": [
+    { "name": "For Here", "enabled": true },
+    { "name": "Pergola Order", "enabled": false },
+    { "name": "To Go", "enabled": true }
+  ]
+}
+```
 
 ## Device Identity
 

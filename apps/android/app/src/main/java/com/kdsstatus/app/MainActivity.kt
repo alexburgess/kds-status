@@ -56,6 +56,8 @@ import com.kdsstatus.app.data.BuiltInConfigRepository
 import com.kdsstatus.app.data.DeviceConfigCache
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.ExpectedSetting
+import com.kdsstatus.app.data.FulfillmentMethodDefinition
+import com.kdsstatus.app.data.FulfillmentMethodsDefinition
 import com.kdsstatus.app.data.InternetCheckPayload
 import com.kdsstatus.app.data.PrinterCheckPayload
 import com.kdsstatus.app.data.PrinterTarget
@@ -893,6 +895,10 @@ private fun buildConfigurationPages(config: DeviceConfigResponse): List<Configur
                     )
                 ),
                 ConfigurationGroupSpec(
+                    title = "Fulfillment methods",
+                    items = fulfillmentMethodConfigurationItems(config, settings)
+                ),
+                ConfigurationGroupSpec(
                     title = "Order timing",
                     items = listOf(
                         ConfigurationItemSpec(
@@ -985,10 +991,34 @@ private val sourceTimingOptions = listOf(
     "Show orders when marked in progress",
     "Show orders based on pickup time"
 )
+private val sourceFulfillmentSettingNames = setOf(
+    "view point of sale orders",
+    "view online kiosk and delayed fulfillment orders",
+    "show orders",
+    "include future fulfillment methods"
+)
 private val ticketCompletionOptions = listOf(
     "Complete on all devices",
     "Complete only on this device"
 )
+
+private fun fulfillmentMethodConfigurationItems(
+    config: DeviceConfigResponse,
+    settings: List<ExpectedSetting>
+): List<ConfigurationItemSpec> {
+    val fulfillmentMethods = config.fulfillmentMethods
+    val includeFuture = fulfillmentMethods?.includeFutureFulfillmentMethods?.yesNo()
+        ?: settings.expectedSetting("Include future fulfillment methods", "No", "source", "fulfilment", "fulfillment")
+    val methodItems = fulfillmentMethods?.methods?.map { method ->
+        ConfigurationItemSpec(method.name, method.enabled.yesNo(), yesNoOptions)
+    } ?: settings.fulfillmentMethodSettings().map { setting ->
+        ConfigurationItemSpec(setting.setting, setting.expected, yesNoOptions)
+    }
+
+    return listOf(
+        ConfigurationItemSpec("Include future fulfillment methods", includeFuture, yesNoOptions)
+    ) + methodItems
+}
 private val coursingOptions = listOf(
     "Show fired and held courses",
     "Only show fired courses"
@@ -1043,11 +1073,23 @@ private fun List<ExpectedSetting>.expectedSetting(
         ?: fallback
 }
 
+private fun List<ExpectedSetting>.fulfillmentMethodSettings(): List<ExpectedSetting> =
+    filter { setting ->
+        val normalizedSetting = setting.setting.normalizedSettingKey()
+        val sourceSection = setting.section.contains("source", ignoreCase = true) ||
+            setting.section.contains("fulfilment", ignoreCase = true) ||
+            setting.section.contains("fulfillment", ignoreCase = true)
+
+        sourceSection && normalizedSetting !in sourceFulfillmentSettingNames
+    }
+
 private fun String.normalizedSettingKey(): String =
     lowercase()
         .replace("&", "and")
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
+
+private fun Boolean.yesNo(): String = if (this) "Yes" else "No"
 
 private fun displayTypeForRole(role: String): String =
     if (role.contains("prep", ignoreCase = true)) "Prep" else "Expeditor"
@@ -1096,6 +1138,14 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
         availableVersion = "7.12",
         expectedVersion = "7.12",
         versionSource = "play-store"
+    ),
+    fulfillmentMethods = FulfillmentMethodsDefinition(
+        includeFutureFulfillmentMethods = false,
+        methods = listOf(
+            FulfillmentMethodDefinition("For Here", true),
+            FulfillmentMethodDefinition("Pergola Order", true),
+            FulfillmentMethodDefinition("To Go", false)
+        )
     ),
     expectedSettings = listOf(
         ExpectedSetting("General", "Display Type", "Expeditor"),

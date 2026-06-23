@@ -288,6 +288,7 @@ export async function buildDeviceConfig(device: DeviceDefinition) {
       versionCheckedAt: playStoreVersion.checkedAt,
       playStoreUpdatedAt: playStoreVersion.updatedAt
     },
+    fulfillmentMethods: device.fulfillmentMethods,
     expectedSettings: device.expectedSettings,
     printers: device.printers.map((printer) => ({
       ...printer,
@@ -324,6 +325,7 @@ function mapDeviceRow(row: DeviceRow): DeviceDefinition {
     active: row.active,
     squareKdsPackageName: row.square_kds_package_name ?? undefined,
     squareKdsExpectedVersion: row.square_kds_expected_version ?? undefined,
+    fulfillmentMethods: undefined,
     expectedSettings: row.expected_settings ?? [],
     printers: (row.printers ?? []).map(mapPrinterRow)
   };

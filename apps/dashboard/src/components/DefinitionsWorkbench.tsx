@@ -159,6 +159,14 @@ function createBlankDeviceTemplate(index: number) {
     locationName: "Kitchen",
     role: "KDS screen",
     squareKdsPackageName: "com.squareup.rst.kds",
+    fulfillmentMethods: {
+      includeFutureFulfillmentMethods: false,
+      methods: [
+        { name: "For Here", enabled: true },
+        { name: "Pergola Order", enabled: false },
+        { name: "To Go", enabled: true }
+      ]
+    },
     expectedSettings: [
       { section: "General", setting: "Display Type", expected: "Expeditor" },
       { section: "Source & Fulfilment", setting: "View point of sale orders", expected: "On" }
@@ -172,6 +180,14 @@ const minimumDeviceExample = `{
     {
       "macAddress": "aa:bb:cc:dd:ee:ff",
       "displayName": "Expo KDS",
+      "fulfillmentMethods": {
+        "includeFutureFulfillmentMethods": false,
+        "methods": [
+          { "name": "For Here", "enabled": true },
+          { "name": "Pergola Order", "enabled": false },
+          { "name": "To Go", "enabled": true }
+        ]
+      },
       "expectedSettings": [
         { "section": "General", "setting": "Display Type", "expected": "Expeditor" }
       ],

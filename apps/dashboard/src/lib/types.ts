@@ -17,6 +17,16 @@ export interface PrinterDefinition {
   description?: string;
 }
 
+export interface FulfillmentMethodDefinition {
+  name: string;
+  enabled: boolean;
+}
+
+export interface FulfillmentMethodsDefinition {
+  includeFutureFulfillmentMethods: boolean;
+  methods: FulfillmentMethodDefinition[];
+}
+
 export interface DeviceDefinition {
   id: string;
   deviceId: string;
@@ -28,6 +38,7 @@ export interface DeviceDefinition {
   active: boolean;
   squareKdsPackageName?: string;
   squareKdsExpectedVersion?: string;
+  fulfillmentMethods?: FulfillmentMethodsDefinition;
   expectedSettings: ExpectedSetting[];
   printers: PrinterDefinition[];
 }

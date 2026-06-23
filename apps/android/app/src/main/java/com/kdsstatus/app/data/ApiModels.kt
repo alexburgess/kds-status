@@ -10,6 +10,7 @@ data class DeviceConfigResponse(
     val role: String,
     val notes: String,
     val squareKds: SquareKdsDefinition,
+    val fulfillmentMethods: FulfillmentMethodsDefinition? = null,
     val expectedSettings: List<ExpectedSetting>,
     val printers: List<PrinterTarget>
 )
@@ -30,6 +31,18 @@ data class ExpectedSetting(
     val section: String,
     val setting: String,
     val expected: String
+)
+
+@Serializable
+data class FulfillmentMethodsDefinition(
+    val includeFutureFulfillmentMethods: Boolean = false,
+    val methods: List<FulfillmentMethodDefinition> = emptyList()
+)
+
+@Serializable
+data class FulfillmentMethodDefinition(
+    val name: String,
+    val enabled: Boolean
 )
 
 @Serializable
