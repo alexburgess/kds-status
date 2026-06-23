@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { verifySharedDeviceSecret } from "@/lib/device-auth";
 import { assignDeviceIdToDefinition, DefinitionValidationError } from "@/lib/local-definitions";
-import { lookupPlayStoreVersion } from "@/lib/play-store-version";
 import type { DeviceDefinition } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
         displayName: device.displayName,
         locationName: device.locationName
       },
-      config: await buildLocalDeviceConfig(device)
+      config: buildLocalDeviceConfig(device)
     });
   } catch (error) {
     if (error instanceof DefinitionValidationError) {
@@ -77,10 +76,7 @@ function isSupabaseConfiguredForDeviceClaim() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-async function buildLocalDeviceConfig(device: DeviceDefinition) {
-  const playStoreVersion = await lookupPlayStoreVersion(device.squareKdsPackageName);
-  const availableVersion = playStoreVersion.version ?? device.squareKdsExpectedVersion;
-
+function buildLocalDeviceConfig(device: DeviceDefinition) {
   return {
     deviceId: device.deviceId,
     displayName: device.displayName,
@@ -89,12 +85,9 @@ async function buildLocalDeviceConfig(device: DeviceDefinition) {
     notes: device.notes,
     squareKds: {
       packageName: device.squareKdsPackageName,
-      availableVersion,
-      expectedVersion: availableVersion,
-      versionSource: playStoreVersion.version ? "play-store" : device.squareKdsExpectedVersion ? "definition-fallback" : playStoreVersion.source,
-      versionLookupError: playStoreVersion.error,
-      versionCheckedAt: playStoreVersion.checkedAt,
-      playStoreUpdatedAt: playStoreVersion.updatedAt
+      availableVersion: device.squareKdsExpectedVersion,
+      expectedVersion: device.squareKdsExpectedVersion,
+      versionSource: device.squareKdsExpectedVersion ? "definition-fallback" : "not-configured"
     },
     fulfillmentMethods: device.fulfillmentMethods,
     expectedSettings: device.expectedSettings,
