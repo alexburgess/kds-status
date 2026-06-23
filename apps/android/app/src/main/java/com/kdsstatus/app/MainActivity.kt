@@ -82,7 +82,6 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableImmersiveMode()
 
         val configRepository = BuiltInConfigRepository()
         val configCache = DeviceConfigCache(this)
@@ -99,6 +98,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        enableImmersiveMode()
     }
 
     override fun onResume() {
@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false)
-            window.insetsController?.let { controller ->
+            window.decorView.windowInsetsController?.let { controller ->
                 controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
                 controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
