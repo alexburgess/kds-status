@@ -1,4 +1,14 @@
-import googlePlayScraper from "google-play-scraper";
+import { File } from "node:buffer";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+if (!("File" in globalThis)) {
+  Object.defineProperty(globalThis, "File", {
+    value: File,
+    configurable: true
+  });
+}
 
 const PACKAGE_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
 const SUCCESS_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -14,6 +24,10 @@ type PlayStoreAppLookup = (options: {
   version?: string;
   updated?: number;
 }>;
+
+interface GooglePlayScraperClient {
+  app: PlayStoreAppLookup;
+}
 
 interface CacheEntry {
   expiresAt: number;
@@ -72,7 +86,7 @@ export async function lookupPlayStoreVersion(
     return cached.result;
   }
 
-  const lookupApp = options.lookupApp ?? googlePlayScraper.app;
+  const lookupApp = options.lookupApp ?? getGooglePlayScraper().app;
   const result = await fetchPlayStoreVersion({
     packageName: normalizedPackageName,
     country,
@@ -93,6 +107,14 @@ export async function lookupPlayStoreVersion(
 
 export function clearPlayStoreVersionCache() {
   versionCache.clear();
+}
+
+function getGooglePlayScraper() {
+  const scraperModule = require("google-play-scraper") as GooglePlayScraperClient & {
+    default?: GooglePlayScraperClient;
+  };
+
+  return scraperModule.default ?? scraperModule;
 }
 
 async function fetchPlayStoreVersion({
