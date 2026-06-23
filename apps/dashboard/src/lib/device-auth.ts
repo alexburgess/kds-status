@@ -1,12 +1,33 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
+export const defaultSharedDeviceSecret = "kds-status-internal-v1";
+
 export function hashDeviceSecret(secret: string) {
   return createHash("sha256").update(secret, "utf8").digest("hex");
 }
 
-export function verifyDeviceSecret(secret: string, expectedHash: string) {
+export function verifyDeviceSecret(secret: string | undefined, expectedHash: string) {
+  if (!secret) {
+    return false;
+  }
+
   const actual = Buffer.from(hashDeviceSecret(secret), "hex");
   const expected = Buffer.from(expectedHash, "hex");
+
+  if (actual.length !== expected.length) {
+    return false;
+  }
+
+  return timingSafeEqual(actual, expected);
+}
+
+export function verifySharedDeviceSecret(secret: string | undefined) {
+  if (!secret) {
+    return false;
+  }
+
+  const expected = Buffer.from(process.env.KDS_DEVICE_SHARED_SECRET ?? defaultSharedDeviceSecret, "utf8");
+  const actual = Buffer.from(secret, "utf8");
 
   if (actual.length !== expected.length) {
     return false;
@@ -33,7 +54,7 @@ export function readDeviceAuthHeaders(headers: Headers) {
   const deviceMacAddress = normalizeMacAddress(headers.get("x-device-mac-address"));
   const deviceSecret = headers.get("x-device-secret")?.trim();
 
-  if ((!deviceId && !deviceMacAddress) || !deviceSecret) {
+  if (!deviceId && !deviceMacAddress) {
     return null;
   }
 

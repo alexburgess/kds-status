@@ -7,11 +7,10 @@ import org.junit.Test
 
 class AppConfigParserTest {
     @Test
-    fun parsesCompleteManagedConfig() {
+    fun parsesOptionalOverrides() {
         val config = AppConfigParser.parse(
             mapOf(
                 "device_id" to "expo-line-01",
-                "device_secret" to "demo-secret",
                 "api_base_url" to "https://kds.example.com/"
             )
         )
@@ -19,25 +18,16 @@ class AppConfigParserTest {
         assertTrue(config.isComplete)
         assertEquals("expo-line-01", config.deviceId)
         assertEquals("https://kds.example.com", config.apiBaseUrl)
+        assertEquals(AppConfigParser.DEFAULT_DEVICE_SECRET, config.deviceSecret)
     }
 
     @Test
-    fun deviceIdIsOptionalWhenAnotherIdentifierIsAvailable() {
-        val config = AppConfigParser.parse(
-            mapOf(
-                "device_secret" to "demo-secret",
-                "api_base_url" to "https://kds.example.com/"
-            )
-        )
+    fun usesBuiltInDefaultsWhenNoManagedConfigExists() {
+        val config = AppConfigParser.parse(emptyMap())
 
         assertTrue(config.isComplete)
         assertEquals("", config.deviceId)
-    }
-
-    @Test
-    fun reportsMissingKeys() {
-        val config = AppConfigParser.parse(emptyMap())
-
-        assertEquals(listOf("device_secret", "api_base_url"), config.missingKeys)
+        assertEquals(AppConfigParser.DEFAULT_API_BASE_URL, config.apiBaseUrl)
+        assertEquals(AppConfigParser.DEFAULT_DEVICE_SECRET, config.deviceSecret)
     }
 }

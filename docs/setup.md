@@ -2,78 +2,73 @@
 
 ## Dashboard
 
-1. Create a Supabase project.
-2. Run `supabase/migrations/202606210001_initial_schema.sql`.
-3. Optionally run `supabase/seed.sql` for the demo device.
-4. Copy `.env.example` to `.env.local` in the repo root or dashboard app.
-5. Set:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. Run:
+Run the dashboard/API:
 
 ```bash
 npm install
 npm run dev
 ```
 
-If Supabase values are not present, the dashboard uses in-memory demo data.
+The deployed internal dashboard currently runs at:
 
-## Device API Authentication
+```text
+http://10.20.12.100:3001
+```
 
-Each tablet has a stable Ethernet MAC address, an optional assigned `deviceId`, and a random `deviceSecret`.
+Without Supabase credentials, the dashboard uses a local JSON definitions file. By default that file is:
 
-The dashboard stores only `sha256(deviceSecret)` in `devices.device_secret_hash`. Devices send the raw secret in the `X-Device-Secret` header over HTTPS. When Android can read the Ethernet MAC address, the app sends it as `X-Device-Mac-Address` and the API uses that as the primary identifier. `X-Device-Id` remains a fallback.
+```text
+apps/dashboard/.local-data/device-definitions.json
+```
 
-For production, use long random secrets and rotate them if a tablet is retired or replaced.
+Set `KDS_DEFINITIONS_PATH` if you want the JSON file somewhere else on the server.
 
-## Define A Device Yourself
+## Define Devices
 
-The easiest path is the dashboard builder:
+Open `/definitions` and edit the JSON directly. The dashboard starts with no example devices.
 
-1. Run the dashboard and open `/definitions`.
-2. Fill in the location, display name, assigned `deviceId`, KDS MAC address, role, Square KDS package name, expected settings, and printer target.
-3. Copy the generated Supabase SQL and run it in the Supabase SQL editor.
-4. Copy the generated Miradore managed configuration values into that tablet's app configuration.
+Minimum device:
 
-The generated SQL uses `encode(digest('<raw secret>', 'sha256'), 'hex')`, so Supabase stores only the hashed secret. Miradore gets the raw secret because the Android tablet needs it to authenticate.
+```json
+{
+  "devices": [
+    {
+      "macAddress": "aa:bb:cc:dd:ee:ff",
+      "displayName": "Expo KDS"
+    }
+  ]
+}
+```
 
-If you are editing manually, the minimum required database fields are:
+Useful optional fields:
 
-- `locations.name` and `locations.slug`
-- `devices.device_id`
-- `devices.mac_address`
-- `devices.device_secret_hash`
-- `devices.display_name`
-- `devices.role`
-- `devices.expected_settings`
+- `locationName`
+- `role`
+- `notes`
+- `squareKdsPackageName`
+- `expectedSettings`
+- `printers`
 
-Add rows to `printers` only when that KDS screen should test a printer.
+Printers default to port `9100` when `port` is omitted.
 
-The Square KDS version is not typed into the definition. When a tablet fetches `/api/device/config`, the dashboard looks up the configured `square_kds_package_name` on Google Play and sends the retrieved version to the tablet as the available version. The current Square KDS package name is `com.squareup.rst.kds`.
+## Device Identity
 
-## Local API Smoke Test
+The Android app has the dashboard URL and shared internal secret baked in. It identifies itself with:
+
+```text
+X-Device-Mac-Address
+```
+
+The API looks for the JSON device with the matching `macAddress`. You do not need to configure Miradore app settings.
+
+## API Smoke Test
+
+After adding a matching definition in `/definitions`, test config lookup:
 
 ```bash
-curl -H "X-Device-Mac-Address: 02:00:00:12:34:44" \
-  -H "X-Device-Secret: demo-secret" \
+curl -H "X-Device-Mac-Address: aa:bb:cc:dd:ee:ff" \
+  -H "X-Device-Secret: kds-status-internal-v1" \
   http://localhost:3000/api/device/config
 ```
 
-```bash
-curl -X POST http://localhost:3000/api/device/status \
-  -H "Content-Type: application/json" \
-  -H "X-Device-Mac-Address: 02:00:00:12:34:44" \
-  -H "X-Device-Secret: demo-secret" \
-  -d '{
-    "localIp": "192.168.20.44",
-    "activeTransport": "ethernet",
-    "internet": { "ok": true, "latencyMs": 40 },
-    "printerChecks": [
-      { "printerId": "printer-hot-line", "name": "Hot line printer", "host": "192.168.20.61", "port": 9100, "ok": true, "latencyMs": 8 }
-    ],
-    "squareKds": { "versionStatus": "not_configured" },
-    "appVersion": "0.1.0",
-    "diagnostics": []
-  }'
-```
+The Square KDS version is still retrieved automatically from Google Play when `squareKdsPackageName` is set. The current Square KDS package name is expected to be `com.squareup.rst.kds`, but confirm it from a real tablet before production rollout.

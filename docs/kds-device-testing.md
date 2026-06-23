@@ -2,9 +2,7 @@
 
 The real device-side experience is the Android app in `apps/android`.
 
-## Fast Visual Check
-
-Use this when you only want to see what the staff-facing screen looks like on the actual KDS hardware.
+## Fast Hardware Check
 
 1. Build the debug APK:
 
@@ -14,10 +12,10 @@ Use this when you only want to see what the staff-facing screen looks like on th
 
 2. Upload `apps/android/app/build/outputs/apk/debug/app-debug.apk` to Miradore as an internal/private Android app.
 3. Deploy it to one test KDS tablet.
-4. Open **KDS Status** on the tablet.
-5. If Miradore managed config is not set yet, tap **Preview device screen**.
+4. In the dashboard, open `/definitions` and add a JSON device whose `macAddress` matches the tablet Ethernet MAC address.
+5. Open **KDS Status** on the tablet.
 
-Preview mode uses sample data. It is only for checking layout, readability, scrolling, and whether the screen makes sense on the physical KDS tablet.
+No Miradore managed app configuration is required.
 
 ## Emulator Check
 
@@ -35,61 +33,23 @@ In a second terminal, build and install the debug app:
 ./scripts/android-install-debug
 ```
 
-Open **KDS Status** inside the emulator. If no managed config is present, tap **Preview device screen**.
+The emulator is useful for layout, scrolling, and typography. It is not a perfect end-to-end test because the emulator MAC address and kitchen printer network path will not match a real KDS tablet.
 
-The emulator is good for layout, scrolling, typography, and the app flow. It is not a perfect replacement for a real KDS tablet because it does not receive Miradore managed configuration or sit on the same kitchen VLAN/printer path.
+## Expected Tablet Result
 
-## Real End-To-End Check
-
-Use this when you want the tablet to load its actual definition and report diagnostics.
-
-1. Start the dashboard on a computer on the same local network as the KDS tablet:
-
-   ```bash
-   npm run dev
-   ```
-
-2. Use the network URL that Next prints, for example:
-
-   ```text
-   http://10.0.200.146:3000
-   ```
-
-3. Open `/definitions` in the dashboard and create the device definition.
-4. Run the generated Supabase SQL, or use the seeded demo device for the first test:
-
-   ```text
-   device_secret=demo-secret
-   api_base_url=http://YOUR-COMPUTER-LAN-IP:3000
-   ```
-
-   `device_id=expo-line-01` can still be set as a fallback, but Ethernet MAC address is preferred when Android exposes it.
-
-5. In Miradore, set those managed app configuration values for the test tablet.
-6. Reopen **KDS Status** on the tablet.
-
-Expected result:
-
-- The app no longer shows setup required.
-- It shows three tablet panels: **THIS DEVICE**, **CONNECTED DEVICES**, and **SQUARE KDS CONFIGURATION**.
+- The app loads the definition whose `macAddress` matches the tablet.
 - It shows the tablet's local IP address and MAC address when Android exposes it.
-- It shows green or red dots for internet, printer reachability, and Square KDS version status.
+- It shows green or red status indicators for internet and printer reachability.
 - It tests internet reachability.
 - It tests configured printer host/port reachability.
 - It reports status back to the dashboard.
 - After one successful config fetch, it can still show the staff screen from cached configuration if the dashboard/API is unavailable. The header shows when that cached configuration was collected.
 
-Square KDS version comparison uses the configured package name, currently `com.squareup.rst.kds`, to retrieve the available version from Google Play on the dashboard/API server. Android does not provide a reliable public API for arbitrary apps to read the live Play Store latest version directly from the tablet.
-
-## Local HTTP Note
-
-The debug APK allows cleartext HTTP so it can talk to a local dev server like `http://10.0.200.146:3000`.
-
-Production deployments should use HTTPS for `api_base_url`.
+Square KDS version comparison uses the configured package name, currently expected to be `com.squareup.rst.kds`, to retrieve the available version from Google Play on the dashboard/API server.
 
 ## Troubleshooting
 
-- If the tablet cannot fetch config, confirm it can reach your computer's LAN IP and that macOS firewall is not blocking incoming connections.
-- If the app shows setup required, Miradore has not delivered `device_secret` and `api_base_url`, or Android cannot expose a MAC address and `device_id` is also blank.
+- If the app says it cannot read a MAC address, confirm the KDS tablet is on Ethernet and reopen the app.
+- If the tablet cannot fetch config, confirm it can reach `http://10.20.12.100:3001` and that a matching `macAddress` exists in `/definitions`.
 - If printer checks fail, verify the printer IP and port from the same network/VLAN as the tablet.
-- If Square KDS version says package not configured, set the package name after confirming it from Miradore inventory or the real device.
+- If Square KDS version says package not configured, set `squareKdsPackageName` in the JSON definition.

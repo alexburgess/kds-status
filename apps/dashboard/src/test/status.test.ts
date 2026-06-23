@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { demoDevices } from "@/lib/demo-data";
 import { compareVersion, summarizeDeviceStatus } from "@/lib/status";
-import type { StatusReport } from "@/lib/types";
+import type { DeviceDefinition, StatusReport } from "@/lib/types";
 
-const device = demoDevices[0];
+const device: DeviceDefinition = {
+  id: "test-device",
+  deviceId: "expo-line-01",
+  macAddress: "02:00:00:12:34:44",
+  displayName: "Expo Line 01",
+  locationName: "Test Kitchen",
+  role: "Expo screen",
+  notes: "",
+  active: true,
+  squareKdsPackageName: "com.squareup.rst.kds",
+  expectedSettings: [],
+  printers: []
+};
 
 describe("status summary", () => {
   it("marks a fresh passing report as healthy", () => {

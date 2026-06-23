@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatPort, formatRelativeTime } from "@/lib/format";
-import type { DashboardDevice, DashboardSnapshot, ExpectedSetting, PrinterDefinition } from "@/lib/types";
+import type { DashboardDevice, DashboardSnapshot } from "@/lib/types";
 
 interface DashboardShellProps {
   snapshot: DashboardSnapshot;
@@ -11,23 +11,19 @@ interface DashboardShellProps {
 
 export function DashboardShell({ snapshot }: DashboardShellProps) {
   const [selectedDeviceId, setSelectedDeviceId] = useState(snapshot.devices[0]?.device.deviceId ?? "");
-  const [draft, setDraft] = useState<DashboardDevice["device"] | null>(null);
-  const [draftSaved, setDraftSaved] = useState(false);
 
   const selected = useMemo(
     () => snapshot.devices.find((item) => item.device.deviceId === selectedDeviceId) ?? snapshot.devices[0],
     [selectedDeviceId, snapshot.devices]
   );
 
-  const visibleDevice = draft && selected?.device.deviceId === draft.deviceId ? draft : selected?.device;
+  const visibleDevice = selected?.device;
   const healthyCount = snapshot.devices.filter((item) => item.summary.severity === "healthy").length;
   const attentionCount = snapshot.devices.filter((item) => item.summary.severity === "critical").length;
   const staleCount = snapshot.devices.filter((item) => item.summary.severity === "warning" || item.summary.severity === "unknown").length;
 
   function selectDevice(device: DashboardDevice) {
     setSelectedDeviceId(device.device.deviceId);
-    setDraft(null);
-    setDraftSaved(false);
   }
 
   return (
@@ -39,7 +35,7 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
           </span>
           <div>
             <strong>KDS Status</strong>
-            <small>{snapshot.mode === "demo" ? "Demo mode" : "Supabase live"}</small>
+            <small>{snapshot.mode === "local" ? "Local JSON" : "Supabase live"}</small>
           </div>
         </div>
 
@@ -56,8 +52,8 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
 
         <div className="sidebar-note">
           <span>Device identity</span>
-          <strong>Assigned deviceId</strong>
-          <p>Configured through Miradore managed app configuration.</p>
+          <strong>Ethernet MAC address</strong>
+          <p>The Android app uses its local MAC address to load the matching JSON definition.</p>
         </div>
       </aside>
 
@@ -100,34 +96,42 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {snapshot.devices.map((item) => (
-                    <tr
-                      className={item.device.deviceId === selected?.device.deviceId ? "selected-row" : ""}
-                      key={item.device.deviceId}
-                      onClick={() => selectDevice(item)}
-                    >
-                      <td>
-                        <button className="row-button" type="button" onClick={() => selectDevice(item)}>
-                          <strong>{item.device.displayName}</strong>
-                          <span>{item.device.deviceId}</span>
-                        </button>
+                  {snapshot.devices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>
+                        <span className="empty-table-message">No KDS screens defined yet. Open Definitions to add the first MAC address.</span>
                       </td>
-                      <td>
-                        <span className={`status-pill ${item.summary.severity}`}>{item.summary.label}</span>
-                      </td>
-                      <td>{item.latestReport ? formatRelativeTime(item.latestReport.reportedAt) : "Never"}</td>
-                      <td>{item.latestReport?.localIp ?? "Unknown"}</td>
-                      <td>{item.latestReport?.activeTransport ?? "Unknown"}</td>
-                      <td>
-                        {item.latestReport
-                          ? `${item.latestReport.printerChecks.filter((printer) => printer.ok).length}/${
-                              item.latestReport.printerChecks.length
-                            }`
-                          : `${item.device.printers.length} expected`}
-                      </td>
-                      <td>{item.latestReport?.squareKds.installedVersion ?? item.latestReport?.squareKds.versionStatus ?? "Unknown"}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    snapshot.devices.map((item) => (
+                      <tr
+                        className={item.device.deviceId === selected?.device.deviceId ? "selected-row" : ""}
+                        key={item.device.deviceId}
+                        onClick={() => selectDevice(item)}
+                      >
+                        <td>
+                          <button className="row-button" type="button" onClick={() => selectDevice(item)}>
+                            <strong>{item.device.displayName}</strong>
+                            <span>{item.device.deviceId}</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${item.summary.severity}`}>{item.summary.label}</span>
+                        </td>
+                        <td>{item.latestReport ? formatRelativeTime(item.latestReport.reportedAt) : "Never"}</td>
+                        <td>{item.latestReport?.localIp ?? "Unknown"}</td>
+                        <td>{item.latestReport?.activeTransport ?? "Unknown"}</td>
+                        <td>
+                          {item.latestReport
+                            ? `${item.latestReport.printerChecks.filter((printer) => printer.ok).length}/${
+                                item.latestReport.printerChecks.length
+                              }`
+                            : `${item.device.printers.length} expected`}
+                        </td>
+                        <td>{item.latestReport?.squareKds.installedVersion ?? item.latestReport?.squareKds.versionStatus ?? "Unknown"}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -172,18 +176,13 @@ export function DashboardShell({ snapshot }: DashboardShellProps) {
               </section>
 
               <section className="detail-section">
-                <h3>Definition</h3>
-                <DefinitionEditor
-                  device={visibleDevice}
-                  onChange={(next) => {
-                    setDraft(next);
-                    setDraftSaved(false);
-                  }}
-                  onSave={() => setDraftSaved(true)}
-                />
-                {draftSaved ? <p className="save-state">Draft updated on this screen only.</p> : null}
+                <h3>Definition Source</h3>
+                <p className="muted">
+                  Edit this screen in the JSON definitions file. The tablet will match the row whose MAC address is{" "}
+                  <strong>{visibleDevice.macAddress ?? "not set"}</strong>.
+                </p>
                 <Link className="secondary-link" href="/definitions">
-                  Create or edit a real device definition
+                  Open JSON definitions
                 </Link>
               </section>
             </aside>
@@ -211,83 +210,6 @@ function SummaryTile({
   );
 }
 
-function DefinitionEditor({
-  device,
-  onChange,
-  onSave
-}: {
-  device: DashboardDevice["device"];
-  onChange: (device: DashboardDevice["device"]) => void;
-  onSave: () => void;
-}) {
-  function updateSetting(index: number, patch: Partial<ExpectedSetting>) {
-    const expectedSettings = device.expectedSettings.map((setting, currentIndex) =>
-      currentIndex === index ? { ...setting, ...patch } : setting
-    );
-    onChange({ ...device, expectedSettings });
-  }
-
-  function updatePrinter(index: number, patch: Partial<PrinterDefinition>) {
-    const printers = device.printers.map((printer, currentIndex) =>
-      currentIndex === index ? { ...printer, ...patch } : printer
-    );
-    onChange({ ...device, printers });
-  }
-
-  return (
-    <form
-      className="definition-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSave();
-      }}
-    >
-      <label>
-        Display name
-        <input value={device.displayName} onChange={(event) => onChange({ ...device, displayName: event.target.value })} />
-      </label>
-      <label>
-        Role
-        <input value={device.role} onChange={(event) => onChange({ ...device, role: event.target.value })} />
-      </label>
-      <label>
-        Notes
-        <textarea value={device.notes} onChange={(event) => onChange({ ...device, notes: event.target.value })} />
-      </label>
-
-      <div className="form-subsection">
-        <span>Expected setup</span>
-        {device.expectedSettings.map((setting, index) => (
-          <div className="definition-row" key={`${setting.section}-${setting.setting}`}>
-            <input aria-label="Section" value={setting.section} onChange={(event) => updateSetting(index, { section: event.target.value })} />
-            <input aria-label="Setting" value={setting.setting} onChange={(event) => updateSetting(index, { setting: event.target.value })} />
-            <input aria-label="Expected value" value={setting.expected} onChange={(event) => updateSetting(index, { expected: event.target.value })} />
-          </div>
-        ))}
-      </div>
-
-      <div className="form-subsection">
-        <span>Printer targets</span>
-        {device.printers.length === 0 ? (
-          <p className="muted">No printer rows configured.</p>
-        ) : (
-          device.printers.map((printer, index) => (
-            <div className="definition-row two-col" key={printer.id}>
-              <input aria-label="Printer name" value={printer.name} onChange={(event) => updatePrinter(index, { name: event.target.value })} />
-              <input aria-label="Printer host" value={printer.host} onChange={(event) => updatePrinter(index, { host: event.target.value })} />
-            </div>
-          ))
-        )}
-      </div>
-
-      <button className="primary-button" type="submit">
-        <SaveIcon />
-        Preview draft
-      </button>
-    </form>
-  );
-}
-
 function KitchenIcon() {
   return <FontAwesomeIcon icon="utensils" />;
 }
@@ -302,10 +224,6 @@ function SettingsIcon() {
 
 function HistoryIcon() {
   return <FontAwesomeIcon icon="clock-rotate-left" />;
-}
-
-function SaveIcon() {
-  return <FontAwesomeIcon icon="floppy-disk" />;
 }
 
 function FontAwesomeIcon({ icon }: { icon: string }) {

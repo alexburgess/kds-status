@@ -52,11 +52,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kdsstatus.app.data.AppConfig
+import com.kdsstatus.app.data.BuiltInConfigRepository
 import com.kdsstatus.app.data.DeviceConfigCache
 import com.kdsstatus.app.data.DeviceConfigResponse
 import com.kdsstatus.app.data.ExpectedSetting
 import com.kdsstatus.app.data.InternetCheckPayload
-import com.kdsstatus.app.data.ManagedConfigRepository
 import com.kdsstatus.app.data.PrinterCheckPayload
 import com.kdsstatus.app.data.PrinterTarget
 import com.kdsstatus.app.data.SquareKdsCheckPayload
@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val configRepository = ManagedConfigRepository(this)
+        val configRepository = BuiltInConfigRepository()
         val configCache = DeviceConfigCache(this)
         val diagnostics = NetworkDiagnostics(this)
 
@@ -104,9 +104,9 @@ private fun KdsStatusApp(
         }
 
         val deviceMacAddress = diagnostics.readLocalMacAddress()
-        if (appConfig.deviceId.isBlank() && deviceMacAddress.isNullOrBlank()) {
+        if (deviceMacAddress.isNullOrBlank()) {
             state = ScreenState.MissingConfig(
-                appConfig.copy(missingKeys = appConfig.missingKeys + "device_id or readable Ethernet MAC address")
+                appConfig.copy(missingKeys = appConfig.missingKeys + "readable Ethernet MAC address")
             )
             return
         }
@@ -156,8 +156,8 @@ private fun KdsStatusApp(
             state = ScreenState.Ready(
                 appConfig = AppConfig(
                     deviceId = "preview-kds",
-                    deviceSecret = "",
-                    apiBaseUrl = ""
+                    deviceSecret = "preview",
+                    apiBaseUrl = "preview"
                 ),
                 remoteConfig = previewDeviceConfig(),
                 report = previewStatusReport(),
@@ -223,7 +223,7 @@ private fun MissingConfigCard(config: AppConfig, onPreview: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(StatusFormatter.missingConfigMessage(config.missingKeys), color = Color(0xFFB42318))
         Spacer(Modifier.height(8.dp))
-        Text("Set device_secret and api_base_url in Miradore. device_id is optional when Ethernet MAC is available.")
+        Text("This app identifies the KDS screen by Ethernet MAC address. Confirm the tablet is on Ethernet, then retry.")
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onPreview,
@@ -1090,7 +1090,7 @@ private fun previewDeviceConfig() = DeviceConfigResponse(
     displayName = "Expo Line 01",
     locationName = "Downtown Kitchen",
     role = "Expo screen",
-    notes = "Preview data. Real tablets load this from the dashboard using their assigned deviceId.",
+    notes = "Preview data. Real tablets load this from the dashboard using their Ethernet MAC address.",
     squareKds = SquareKdsDefinition(
         packageName = "com.squareup.rst.kds",
         availableVersion = "7.12",

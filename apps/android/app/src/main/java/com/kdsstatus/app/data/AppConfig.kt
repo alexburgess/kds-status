@@ -10,18 +10,17 @@ data class AppConfig(
 }
 
 object AppConfigParser {
-    const val DEVICE_ID = "device_id"
-    const val DEVICE_SECRET = "device_secret"
-    const val API_BASE_URL = "api_base_url"
+    const val DEFAULT_DEVICE_SECRET = "kds-status-internal-v1"
+    const val DEFAULT_API_BASE_URL = "http://10.20.12.100:3001"
 
     fun parse(values: Map<String, String?>): AppConfig {
-        val deviceId = values[DEVICE_ID].orEmpty().trim()
-        val deviceSecret = values[DEVICE_SECRET].orEmpty().trim()
-        val apiBaseUrl = values[API_BASE_URL].orEmpty().trim().trimEnd('/')
+        val deviceId = values["device_id"].orEmpty().trim()
+        val deviceSecret = values["device_secret"].orEmpty().trim().ifBlank { DEFAULT_DEVICE_SECRET }
+        val apiBaseUrl = values["api_base_url"].orEmpty().trim().ifBlank { DEFAULT_API_BASE_URL }.trimEnd('/')
 
         val missing = buildList {
-            if (deviceSecret.isBlank()) add(DEVICE_SECRET)
-            if (apiBaseUrl.isBlank()) add(API_BASE_URL)
+            if (deviceSecret.isBlank()) add("device_secret")
+            if (apiBaseUrl.isBlank()) add("api_base_url")
         }
 
         return AppConfig(
@@ -31,4 +30,6 @@ object AppConfigParser {
             missingKeys = missing
         )
     }
+
+    fun builtIn(): AppConfig = parse(emptyMap())
 }

@@ -14,10 +14,10 @@ class StatusFormatterTest {
     }
 
     @Test
-    fun formatsMissingManagedConfig() {
+    fun formatsMissingAppSetup() {
         assertEquals(
-            "Missing managed configuration: device_secret, api_base_url",
-            StatusFormatter.missingConfigMessage(listOf("device_secret", "api_base_url"))
+            "Missing app setup: readable Ethernet MAC address",
+            StatusFormatter.missingConfigMessage(listOf("readable Ethernet MAC address"))
         )
     }
 

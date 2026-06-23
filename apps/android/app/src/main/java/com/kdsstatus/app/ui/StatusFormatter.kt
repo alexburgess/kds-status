@@ -9,8 +9,8 @@ object StatusFormatter {
         .withZone(ZoneId.systemDefault())
 
     fun missingConfigMessage(keys: List<String>): String =
-        if (keys.isEmpty()) "Managed configuration is complete."
-        else "Missing managed configuration: ${keys.joinToString(", ")}"
+        if (keys.isEmpty()) "App setup is complete."
+        else "Missing app setup: ${keys.joinToString(", ")}"
 
     fun configCollectedAt(epochMillis: Long): String =
         configTimestampFormatter.format(Instant.ofEpochMilli(epochMillis))

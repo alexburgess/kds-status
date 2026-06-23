@@ -85,7 +85,7 @@ export interface DashboardDevice {
 export interface DashboardSnapshot {
   devices: DashboardDevice[];
   generatedAt: string;
-  mode: "demo" | "supabase";
+  mode: "local" | "supabase";
 }
 
 export interface DeviceDetail {

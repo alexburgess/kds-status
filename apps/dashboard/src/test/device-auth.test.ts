@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultSharedDeviceSecret,
   hashDeviceSecret,
   normalizeMacAddress,
   readDeviceAuthHeaders,
-  verifyDeviceSecret
+  verifyDeviceSecret,
+  verifySharedDeviceSecret
 } from "@/lib/device-auth";
 
 describe("device secret verification", () => {
@@ -21,18 +23,17 @@ describe("device secret verification", () => {
 });
 
 describe("device auth headers", () => {
-  it("accepts MAC address identity with a secret", () => {
+  it("accepts MAC address identity", () => {
     const parsed = readDeviceAuthHeaders(
       new Headers({
-        "X-Device-Mac-Address": "02-00-00-12-34-44",
-        "X-Device-Secret": "demo-secret"
+        "X-Device-Mac-Address": "02-00-00-12-34-44"
       })
     );
 
     expect(parsed).toEqual({
       deviceId: undefined,
       deviceMacAddress: "02:00:00:12:34:44",
-      deviceSecret: "demo-secret"
+      deviceSecret: undefined
     });
   });
 
@@ -45,6 +46,16 @@ describe("device auth headers", () => {
     );
 
     expect(parsed).toBeNull();
+  });
+});
+
+describe("shared internal device secret", () => {
+  it("accepts the baked-in default secret", () => {
+    expect(verifySharedDeviceSecret(defaultSharedDeviceSecret)).toBe(true);
+  });
+
+  it("rejects missing shared secrets", () => {
+    expect(verifySharedDeviceSecret(undefined)).toBe(false);
   });
 });
 

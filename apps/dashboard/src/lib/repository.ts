@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { demoDevices } from "./demo-data";
 import { addDemoReport, getDemoReports } from "./demo-store";
-import { normalizeMacAddress, verifyDeviceSecret } from "./device-auth";
+import { normalizeMacAddress, verifyDeviceSecret, verifySharedDeviceSecret } from "./device-auth";
+import { readDeviceDefinitions } from "./local-definitions";
 import { lookupPlayStoreVersion } from "./play-store-version";
 import { createSupabaseServiceClient, isSupabaseConfigured } from "./supabase";
 import { summarizeDeviceStatus } from "./status";
@@ -58,11 +58,12 @@ interface StatusReportRow {
 
 export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   if (!isSupabaseConfigured()) {
+    const definitions = await readDeviceDefinitions();
     const reports = getDemoReports();
-    const devices = demoDevices.map((device) => {
+    const devices = definitions.map((device) => {
       const latestReport = reports.find((report) => report.deviceId === device.deviceId);
       return {
-        device: stripSecret(device),
+        device,
         latestReport,
         summary: summarizeDeviceStatus(device, latestReport)
       };
@@ -71,7 +72,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
     return {
       devices,
       generatedAt: new Date().toISOString(),
-      mode: "demo"
+      mode: "local"
     };
   }
 
@@ -118,14 +119,15 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
 
 export async function getDeviceDetail(deviceId: string): Promise<DeviceDetail | null> {
   if (!isSupabaseConfigured()) {
-    const device = demoDevices.find((item) => item.deviceId === deviceId);
+    const definitions = await readDeviceDefinitions();
+    const device = definitions.find((item) => item.deviceId === deviceId);
     if (!device) {
       return null;
     }
 
     const history = getDemoReports().filter((report) => report.deviceId === deviceId);
     return {
-      device: stripSecret(device),
+      device,
       latestReport: history[0],
       history
     };
@@ -169,21 +171,22 @@ export async function getDeviceDetail(deviceId: string): Promise<DeviceDetail | 
 export async function authenticateDevice(credentials: {
   deviceId?: string;
   deviceMacAddress?: string;
-  deviceSecret: string;
+  deviceSecret?: string;
 }) {
   if (!isSupabaseConfigured()) {
-    let device = credentials.deviceMacAddress
-      ? demoDevices.find((item) => normalizeMacAddress(item.macAddress) === credentials.deviceMacAddress)
-      : undefined;
-    if (!device && credentials.deviceId) {
-      device = demoDevices.find((item) => item.deviceId === credentials.deviceId);
-    }
-
-    if (!device || !verifyDeviceSecret(credentials.deviceSecret, device.deviceSecretHash)) {
+    if (!verifySharedDeviceSecret(credentials.deviceSecret)) {
       return null;
     }
 
-    return stripSecret(device);
+    const definitions = await readDeviceDefinitions();
+    let device = credentials.deviceMacAddress
+      ? definitions.find((item) => normalizeMacAddress(item.macAddress) === credentials.deviceMacAddress && item.active)
+      : undefined;
+    if (!device && credentials.deviceId) {
+      device = definitions.find((item) => item.deviceId === credentials.deviceId && item.active);
+    }
+
+    return device ?? null;
   }
 
   const supabase = createSupabaseServiceClient();
@@ -354,22 +357,5 @@ function mapStatusReportRow(row: StatusReportRow): StatusReport {
     squareKds: row.square_kds ?? { versionStatus: "unknown" },
     appVersion: row.app_version,
     diagnostics: row.diagnostics ?? []
-  };
-}
-
-function stripSecret(device: DeviceDefinition & { deviceSecretHash?: string }): DeviceDefinition {
-  return {
-    id: device.id,
-    deviceId: device.deviceId,
-    macAddress: device.macAddress,
-    displayName: device.displayName,
-    locationName: device.locationName,
-    role: device.role,
-    notes: device.notes,
-    active: device.active,
-    squareKdsPackageName: device.squareKdsPackageName,
-    squareKdsExpectedVersion: device.squareKdsExpectedVersion,
-    expectedSettings: device.expectedSettings,
-    printers: device.printers
   };
 }

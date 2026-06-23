@@ -2,11 +2,11 @@
 
 KDS Status is a fleet dashboard and Android companion app for diagnosing Square KDS tablets.
 
-KDS tablets identify themselves by Ethernet MAC address when Android exposes it. Miradore still pushes `device_secret` and `api_base_url`, and may also push `device_id` as a fallback label.
+KDS tablets identify themselves by Ethernet MAC address. The Android app has the internal dashboard URL baked in, so Miradore only needs to deploy the APK.
 
 ## Apps
 
-- `apps/dashboard`: Next.js dashboard and device API backed by Supabase Postgres, with demo data fallback.
+- `apps/dashboard`: Next.js dashboard and device API with a local JSON definition store. Supabase support remains available if credentials are configured.
 - `apps/android`: Kotlin/Jetpack Compose companion app for local network diagnostics and status reporting.
 - `supabase/migrations`: database schema for locations, devices, printers, and status reports.
 
@@ -19,7 +19,7 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-Without Supabase credentials, the dashboard runs in demo mode using the seeded device `expo-line-01` and secret `demo-secret`.
+Without Supabase credentials, the dashboard reads definitions from a local JSON file and starts with no example devices.
 
 ## Android CLI Build
 
@@ -42,10 +42,10 @@ The local tablet emulator is named `kds-tablet`:
 
 ## Device API
 
-Device requests authenticate with:
+Device requests use:
 
-- `X-Device-Mac-Address` when available, otherwise `X-Device-Id`
-- `X-Device-Secret`
+- `X-Device-Mac-Address` for device lookup
+- `X-Device-Secret` for the baked-in shared internal app secret
 
 Endpoints:
 
@@ -56,9 +56,17 @@ See [docs/setup.md](docs/setup.md) and [docs/miradore-managed-config.md](docs/mi
 
 ## Defining A Device
 
-Open `/definitions` in the dashboard. The builder creates:
+Open `/definitions` in the dashboard and edit the JSON:
 
-- Supabase SQL for the location, device, expected KDS settings, and optional printer.
-- Miradore managed configuration values for `device_secret`, `api_base_url`, and optional fallback `device_id`.
+```json
+{
+  "devices": [
+    {
+      "macAddress": "aa:bb:cc:dd:ee:ff",
+      "displayName": "Expo KDS"
+    }
+  ]
+}
+```
 
-The fleet page side panel only previews the selected device definition. Real creation/editing starts from the Definitions page.
+The dashboard fills in defaults for optional fields such as `deviceId`, `locationName`, `role`, empty settings, and printer port `9100`.

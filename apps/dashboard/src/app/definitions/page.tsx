@@ -1,10 +1,10 @@
 import { DefinitionsWorkbench } from "@/components/DefinitionsWorkbench";
-import { getDashboardSnapshot } from "@/lib/repository";
+import { getDefinitionsEditorState } from "@/lib/local-definitions";
 
 export const dynamic = "force-dynamic";
 
 export default async function DefinitionsPage() {
-  const snapshot = await getDashboardSnapshot();
+  const editorState = await getDefinitionsEditorState();
 
-  return <DefinitionsWorkbench snapshot={snapshot} />;
+  return <DefinitionsWorkbench initialState={editorState} />;
 }

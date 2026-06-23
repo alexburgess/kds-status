@@ -1,12 +1,14 @@
 # KDS Status Android App
 
-This is the tablet companion app. It reads Miradore managed configuration, fetches its device definition, runs local diagnostics, and reports status to the dashboard API.
+This is the tablet companion app. It has the internal dashboard URL baked in, fetches its device definition by Ethernet MAC address, runs local diagnostics, and reports status to the dashboard API.
 
-Managed configuration keys:
+Built-in API target:
 
-- `device_id`
-- `device_secret`
-- `api_base_url`
+```text
+http://10.20.12.100:3001
+```
+
+No Miradore managed app configuration is required. If the dashboard address changes, update `AppConfigParser.DEFAULT_API_BASE_URL`, rebuild the APK, and redeploy it.
 
 Local checks:
 
